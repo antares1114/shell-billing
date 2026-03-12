@@ -40,6 +40,8 @@ const KEYS = {
     SALES: 'shell_sales',
     RETURNS: 'shell_returns',
     SUPPLIES: 'shell_supplies',
+    PROMOTIONS: 'shell_promotions',
+    ORDERS: 'shell_orders',
     FACTORIES: 'shell_factories',
     DESIGNS: 'shell_designs',
     SUPPLY_CATS: 'shell_supply_cats'
@@ -166,8 +168,7 @@ function addPurchase(item) {
     const record = {
         id: genId(), date: item.date || getToday(),
         factory: item.factory.trim(), design: item.design.trim(), model: item.model.trim(),
-        quantity: Number(item.quantity), unitCost: Number(item.unitCost),
-        totalCost: Number(item.quantity) * Number(item.unitCost),
+        quantity: Number(item.quantity), unitCost: 0, totalCost: 0,
         note: item.note || '', createdAt: Date.now()
     };
     list.unshift(record);
@@ -184,12 +185,15 @@ function addSale(item) {
     const list = getSales();
     const qty = Number(item.quantity), sp = Number(item.sellingPrice), pc = Number(item.purchaseCost);
     const lo = Number(item.logistics), pk = Number(item.packaging), ins = Number(item.insurance);
-    const totalRevenue = sp * qty, totalCost = (pc + lo + pk + ins) * qty;
+    const commRate = Number(item.commission) || 0;
+    const commAmount = sp * commRate * qty;
+    const totalRevenue = sp * qty, totalCost = (pc + lo + pk + ins) * qty + commAmount;
     const record = {
         id: genId(), date: item.date || getToday(), platform: item.platform,
         design: (item.design || '').trim(), model: item.model.trim(),
         quantity: qty, sellingPrice: sp, purchaseCost: pc,
         logistics: lo, packaging: pk, insurance: ins,
+        commission: commRate, commissionAmount: commAmount,
         totalRevenue, totalCost, profit: totalRevenue - totalCost,
         note: item.note || '', createdAt: Date.now()
     };
@@ -276,12 +280,16 @@ function getMonthlyReport(year, month) {
     const mp = getPurchases().filter(p => p.date.startsWith(prefix));
     const mr = getReturns().filter(r => r.date.startsWith(prefix));
     const msup = getSupplies().filter(s => s.date.startsWith(prefix));
+    const mpromo = getStore(KEYS.PROMOTIONS).filter(p => p.date && p.date.startsWith(prefix));
+    const morders = getStore(KEYS.ORDERS).filter(o => o.date && o.date.startsWith(prefix));
 
     const totalRevenue = ms.reduce((s, x) => s + x.totalRevenue, 0);
     const totalCost = ms.reduce((s, x) => s + x.totalCost, 0);
     const totalRefund = mr.reduce((s, x) => s + (x.refundAmount || 0), 0);
     const totalSupplies = msup.reduce((s, x) => s + x.amount, 0);
-    const grossProfit = totalRevenue - totalCost - totalRefund - totalSupplies;
+    const totalPromo = mpromo.reduce((s, x) => s + x.amount, 0);
+    const totalOrders = morders.reduce((s, x) => s + x.amount, 0);
+    const grossProfit = totalRevenue - totalCost - totalRefund - totalSupplies - totalPromo - totalOrders;
 
     const pb = {};
     ms.forEach(s => {
@@ -297,6 +305,8 @@ function getMonthlyReport(year, month) {
         totalCost: Math.round(totalCost * 100) / 100,
         totalRefund: Math.round(totalRefund * 100) / 100,
         totalSupplies: Math.round(totalSupplies * 100) / 100,
+        totalPromo: Math.round(totalPromo * 100) / 100,
+        totalOrders: Math.round(totalOrders * 100) / 100,
         grossProfit: Math.round(grossProfit * 100) / 100,
         totalSoldQty: ms.reduce((s, x) => s + x.quantity, 0),
         totalReturnQty: mr.reduce((s, x) => s + x.quantity, 0),
@@ -425,6 +435,9 @@ async function initApp() {
     reportYear = now.getFullYear();
     reportMonth = now.getMonth() + 1;
     bindFormListeners();
+    setupModelAutocomplete('s-model', 's-model-list');
+    setupModelAutocomplete('r-model', 'r-model-list');
+    setupModelAutocomplete('p-model', 'p-model-list');
 
     // 绑定同步按钮
     document.getElementById('syncStatus').addEventListener('click', manualSync);
@@ -452,6 +465,9 @@ function refreshAll() {
     renderReturns();
     renderInventory();
     renderReport();
+    renderPromotion();
+    renderOrders();
+    updateExpenseBreakdown();
 }
 
 // --- 视图切换 ---
@@ -512,12 +528,14 @@ function selectPlatform(p) {
     currentPlatform = p;
     document.getElementById('btn-taobao').classList.toggle('active', p === '淘宝');
     document.getElementById('btn-xhs').classList.toggle('active', p === '小红书');
+    document.getElementById('btn-douyin').classList.toggle('active', p === '抖音');
 }
 
 function selectReturnPlatform(p) {
     returnPlatform = p;
     document.getElementById('rbtn-taobao').classList.toggle('active', p === '淘宝');
     document.getElementById('rbtn-xhs').classList.toggle('active', p === '小红书');
+    document.getElementById('rbtn-douyin').classList.toggle('active', p === '抖音');
 }
 
 function setInvView(mode) {
@@ -529,22 +547,14 @@ function setInvView(mode) {
 
 // --- 表单实时计算 ---
 function bindFormListeners() {
-    const pQty = document.getElementById('p-quantity'), pCost = document.getElementById('p-unitcost');
-    function upd() {
-        const q = Number(pQty.value), c = Number(pCost.value);
-        if (q > 0 && c > 0) { document.getElementById('p-preview').style.display = 'flex'; document.getElementById('p-total').textContent = '¥' + fmt(q * c); }
-        else { document.getElementById('p-preview').style.display = 'none'; }
-    }
-    pQty.addEventListener('input', upd);
-    pCost.addEventListener('input', upd);
-
     const sQty = document.getElementById('s-quantity'), sPrice = document.getElementById('s-price'), sCost = document.getElementById('s-cost');
     const sL = document.getElementById('s-logistics'), sP = document.getElementById('s-packaging'), sI = document.getElementById('s-insurance');
     function updS() {
         const q = Number(sQty.value), sp = Number(sPrice.value), pc = Number(sCost.value);
         const lo = Number(sL.value) || 4, pk = Number(sP.value) || 3, ins = Number(sI.value) || 1.5;
+        const commRate = Number(document.querySelector('input[name="s-commission"]:checked')?.value) || 0;
         if (q > 0 && sp > 0 && pc > 0) {
-            const rev = sp * q, cost = (pc + lo + pk + ins) * q, profit = rev - cost;
+            const rev = sp * q, commAmount = sp * commRate * q, cost = (pc + lo + pk + ins) * q + commAmount, profit = rev - cost;
             document.getElementById('s-profit-preview').style.display = 'block';
             document.getElementById('sp-revenue').textContent = '+¥' + fmt(rev);
             document.getElementById('sp-cost').textContent = '-¥' + fmt(cost);
@@ -554,16 +564,27 @@ function bindFormListeners() {
     }
     [sQty, sPrice, sCost, sL, sP, sI].forEach(el => el.addEventListener('input', updS));
     [sL, sP, sI].forEach(el => el.addEventListener('input', updateCostPreview));
+    document.querySelectorAll('input[name="s-commission"]').forEach(r => r.addEventListener('change', updS));
 }
+
+
 
 
 // ============================================
 // 首页
 // ============================================
 
+let dashYear = new Date().getFullYear();
+let dashMonth = new Date().getMonth() + 1;
+
 function renderDashboard() {
-    const now = new Date();
-    const report = getMonthlyReport(now.getFullYear(), now.getMonth() + 1);
+    const report = getMonthlyReport(dashYear, dashMonth);
+
+    document.getElementById('dash-month-label').textContent = dashYear + '年' + dashMonth + '月';
+    document.getElementById('kpi-revenue-label').textContent = dashMonth + '月销售额';
+    document.getElementById('kpi-profit-label').textContent = dashMonth + '月利润';
+    document.getElementById('kpi-purchase-label').textContent = dashMonth + '月进货额';
+    document.getElementById('kpi-supplies-label').textContent = dashMonth + '月辅料支出';
 
     document.getElementById('kpi-revenue').textContent = '¥' + fmt(report.totalRevenue);
     document.getElementById('kpi-sold-qty').textContent = report.totalSoldQty + ' 件已售';
@@ -595,6 +616,13 @@ function renderDashboard() {
     else recentEl.innerHTML = items.map(i => `<div class="recent-item"><div class="recent-left"><span class="recent-icon">${i.icon}</span><div class="recent-info"><span class="recent-title">${i.title}</span><span class="recent-date">${i.date}</span></div></div><span class="recent-amount ${i.cls}">${i.amount}</span></div>`).join('');
 }
 
+function changeDashMonth(delta) {
+    dashMonth += delta;
+    if (dashMonth < 1) { dashMonth = 12; dashYear--; }
+    else if (dashMonth > 12) { dashMonth = 1; dashYear++; }
+    renderDashboard();
+}
+
 
 // ============================================
 // 进货页
@@ -605,40 +633,26 @@ function renderPurchases() {
     const fSummary = getFactorySummary();
 
     document.getElementById('factory-bar').innerHTML = fSummary.map(f => `<div class="factory-tag"><span class="factory-tag-name">${f.factory}</span><span class="factory-tag-amount">¥${fmt(f.totalAmount)}</span><span class="factory-tag-count">${f.orders}笔 / ${f.totalQty}件</span></div>`).join('');
-    document.getElementById('factory-chips').innerHTML = factories.map(f => `<span class="chip" onclick="document.getElementById('p-factory').value='${f}'">${f}</span>`).join('');
-    document.getElementById('design-chips').innerHTML = designs.map(d => `<span class="chip" onclick="document.getElementById('p-design').value='${d}'">${d}</span>`).join('');
     document.getElementById('purchase-count').textContent = '共' + purchases.length + '条';
 
-    const filterEl = document.getElementById('purchase-filters');
-    filterEl.innerHTML = `<button class="filter-chip active" onclick="filterPurchases('')">全部</button>` +
-        factories.map(f => `<button class="filter-chip" onclick="filterPurchases('${f}')">${f}</button>`).join('');
     renderPurchaseList(purchases);
-}
-
-let purchaseFilter = '';
-function filterPurchases(factory) {
-    purchaseFilter = factory;
-    document.querySelectorAll('#purchase-filters .filter-chip').forEach(el => el.classList.toggle('active', el.textContent === (factory || '全部')));
-    renderPurchaseList(factory ? getPurchases().filter(p => p.factory === factory) : getPurchases());
 }
 
 function renderPurchaseList(list) {
     const el = document.getElementById('purchase-list');
     if (!list.length) { el.innerHTML = '<div class="empty-state">📦 还没有进货记录</div>'; return; }
-    el.innerHTML = list.map(p => `<div class="list-item"><div class="item-top"><div class="item-top-left"><span class="badge badge-blue">${p.factory}</span><span class="badge badge-purple">${p.design}</span><span class="item-model">${p.model}</span></div><button class="item-delete" onclick="confirmDeletePurchase('${p.id}')">✕</button></div><div class="item-stats"><div class="item-stat"><span class="item-stat-label">数量</span><span class="item-stat-value">${p.quantity}件</span></div><div class="item-stat"><span class="item-stat-label">单价</span><span class="item-stat-value">¥${p.unitCost}</span></div><div class="item-stat"><span class="item-stat-label">总额</span><span class="item-stat-value danger">¥${fmt(p.totalCost)}</span></div></div><div class="item-bottom"><span>${p.date}</span>${p.note ? `<span>${p.note}</span>` : ''}</div></div>`).join('');
+    el.innerHTML = list.map(p => `<div class="list-item"><div class="item-top"><div class="item-top-left"><span class="badge badge-blue">${p.factory}</span><span class="badge badge-purple">${p.design}</span><span class="item-model">${p.model}</span></div><button class="item-delete" onclick="confirmDeletePurchase('${p.id}')">✕</button></div><div class="item-stats"><div class="item-stat"><span class="item-stat-label">数量</span><span class="item-stat-value">${p.quantity}件</span></div></div><div class="item-bottom"><span>${p.date}</span>${p.note ? `<span>${p.note}</span>` : ''}</div></div>`).join('');
 }
 
 function submitPurchase() {
-    const factory = document.getElementById('p-factory').value;
+    const factory = document.getElementById('p-factory').value.trim();
     const design = document.getElementById('p-design').value;
     const model = document.getElementById('p-model').value;
     const quantity = document.getElementById('p-quantity').value;
-    const unitCost = document.getElementById('p-unitcost').value;
-    if (!factory || !design || !model || !quantity || !unitCost) { showToast('请填写完整信息', true); return; }
-    addPurchase({ date: document.getElementById('p-date').value, factory, design, model, quantity, unitCost, note: document.getElementById('p-note').value });
+    if (!factory || !design || !model || !quantity) { showToast('请填写完整信息', true); return; }
+    addPurchase({ date: document.getElementById('p-date').value, factory, design, model, quantity, note: document.getElementById('p-note').value });
     showToast('进货记录已保存 ✓ 云端同步中');
-    ['p-factory', 'p-design', 'p-model', 'p-quantity', 'p-unitcost', 'p-note'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('p-preview').style.display = 'none';
+    ['p-factory', 'p-design', 'p-model', 'p-quantity', 'p-note'].forEach(id => document.getElementById(id).value = '');
     toggleForm('purchase');
     refreshAll();
 }
@@ -647,38 +661,129 @@ function confirmDeletePurchase(id) { showModal('确认删除', '确定要删除�
 
 
 // ============================================
+// 订货转账
+// ============================================
+
+let orderYear = new Date().getFullYear();
+let orderMonth = new Date().getMonth() + 1;
+
+function renderOrders() {
+    const allOrders = getStore(KEYS.ORDERS);
+    const yPrefix = String(orderYear);
+    const orders = allOrders.filter(o => o.date && o.date.startsWith(yPrefix));
+    const ym = orderYear + '-' + String(orderMonth).padStart(2, '0');
+    const monthOrders = allOrders.filter(o => o.date && o.date.startsWith(ym));
+    document.getElementById('order-month-total').textContent = '¥' + fmt(monthOrders.reduce((s, o) => s + o.amount, 0));
+    document.getElementById('order-month-label').textContent = orderMonth + '月转账';
+    document.getElementById('order-all-total').textContent = '¥' + fmt(orders.reduce((s, o) => s + o.amount, 0));
+    document.getElementById('order-year-label').textContent = orderYear + '年';
+    document.getElementById('order-year-title').textContent = orderYear + '年总转账';
+    document.getElementById('order-count').textContent = '共' + orders.length + '条';
+
+    const dateEl = document.getElementById('ord-date');
+    if (dateEl && !dateEl.value) dateEl.value = getToday();
+
+
+
+    const el = document.getElementById('order-list');
+    if (!orders.length) { el.innerHTML = '<div class="empty-state">💳 ' + orderYear + '年还没有转账记录</div>'; return; }
+    el.innerHTML = orders.map(o => `<div class="list-item"><div class="item-top"><div class="item-top-left"><span class="badge badge-blue">${o.factory}</span>${o.product ? `<span class="badge badge-purple">${o.product}</span>` : ''}</div><button class="item-delete" onclick="confirmDeleteOrder('${o.id}')">✕</button></div><div class="item-stats"><div class="item-stat"><span class="item-stat-label">转账金额</span><span class="item-stat-value danger">¥${fmt(o.amount)}</span></div></div><div class="item-bottom"><span>${o.date}</span>${o.note ? `<span>${o.note}</span>` : ''}</div></div>`).join('');
+}
+
+function changeOrderYear(delta) {
+    orderYear += delta;
+    renderOrders();
+}
+
+function changeOrderMonth(delta) {
+    orderMonth += delta;
+    if (orderMonth < 1) { orderMonth = 12; orderYear--; }
+    else if (orderMonth > 12) { orderMonth = 1; orderYear++; }
+    renderOrders();
+}
+
+function submitOrder() {
+    const amount = parseFloat(document.getElementById('ord-amount').value);
+    const factory = document.getElementById('ord-factory').value.trim();
+    if (!amount || amount <= 0 || !factory) { showToast('请填写工厂名和金额', true); return; }
+    const orders = getStore(KEYS.ORDERS);
+    orders.unshift({
+        id: genId(),
+        date: document.getElementById('ord-date').value || getToday(),
+        factory: factory,
+        amount: amount,
+        product: document.getElementById('ord-product').value.trim(),
+        note: document.getElementById('ord-note').value.trim()
+    });
+    setStore(KEYS.ORDERS, orders);
+    saveToList(KEYS.FACTORIES, factory);
+    document.getElementById('ord-amount').value = '';
+    document.getElementById('ord-factory').value = '';
+    document.getElementById('ord-product').value = '';
+    document.getElementById('ord-note').value = '';
+    showToast('转账记录已保存 ✓');
+    toggleForm('order');
+    refreshAll();
+}
+
+function confirmDeleteOrder(id) {
+    showModal('确认删除', '确定要删除这条转账记录吗？', () => {
+        const orders = getStore(KEYS.ORDERS).filter(o => o.id !== id);
+        setStore(KEYS.ORDERS, orders);
+        showToast('已删除');
+        refreshAll();
+    });
+}
+
+
+// ============================================
 // 辅料采购
 // ============================================
 
+let suppliesYear = new Date().getFullYear();
+let suppliesMonth = new Date().getMonth() + 1;
+
 function renderSupplies() {
-    const supplies = getSupplies(), cats = getSupplyCats();
-    const now = new Date();
-    const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const monthTotal = supplies.filter(s => s.date.startsWith(prefix)).reduce((sum, s) => sum + s.amount, 0);
-    const allTotal = supplies.reduce((sum, s) => sum + s.amount, 0);
+    const allSupplies = getSupplies(), cats = getSupplyCats();
+    const yPrefix = String(suppliesYear);
+    const supplies = allSupplies.filter(s => s.date && s.date.startsWith(yPrefix));
+    const prefix = suppliesYear + '-' + String(suppliesMonth).padStart(2, '0');
+    const monthTotal = allSupplies.filter(s => s.date && s.date.startsWith(prefix)).reduce((sum, s) => sum + s.amount, 0);
+    const yearTotal = supplies.reduce((sum, s) => sum + s.amount, 0);
 
     document.getElementById('supplies-month-total').textContent = '¥' + fmt(monthTotal);
-    document.getElementById('supplies-all-total').textContent = '¥' + fmt(allTotal);
+    document.getElementById('supplies-month-label').textContent = suppliesMonth + '月辅料支出';
+    document.getElementById('supplies-all-total').textContent = '¥' + fmt(yearTotal);
+    document.getElementById('supplies-year-label').textContent = suppliesYear + '年';
+    document.getElementById('supplies-year-title').textContent = suppliesYear + '年辅料支出';
     document.getElementById('supplies-count').textContent = '共' + supplies.length + '条';
-    document.getElementById('supply-cat-chips').innerHTML = cats.map(c => `<span class="chip" onclick="document.getElementById('sup-category').value='${c}'">${c}</span>`).join('');
 
-    const filterEl = document.getElementById('supplies-filters');
-    filterEl.innerHTML = `<button class="filter-chip active" onclick="filterSupplies('')">全部</button>` +
-        cats.map(c => `<button class="filter-chip" onclick="filterSupplies('${c}')">${c}</button>`).join('');
     renderSuppliesList(supplies);
+
+    function renderSuppliesList(list) {
+        const el = document.getElementById('supplies-list');
+        if (!list.length) { el.innerHTML = '<div class="empty-state">🎁 还没有辅料采购记录</div>'; return; }
+        el.innerHTML = list.map(s => `<div class="list-item"><div class="item-top"><div class="item-top-left"><span class="badge badge-purple">${s.category}</span><span class="item-model">${s.name}</span></div><button class="item-delete" onclick="confirmDeleteSupply('${s.id}')">✕</button></div><div class="item-stats"><div class="item-stat"><span class="item-stat-label">数量</span><span class="item-stat-value">${s.quantity}</span></div><div class="item-stat"><span class="item-stat-label">金额</span><span class="item-stat-value danger">¥${fmt(s.amount)}</span></div></div><div class="item-bottom"><span>${s.date}</span>${s.note ? `<span>${s.note}</span>` : ''}</div></div>`).join('');
+    }
+    renderSuppliesList(supplies);
+
+    // 设置快速记账日期默认值
+    const qeDateEl = document.getElementById('qe-date');
+    if (qeDateEl && !qeDateEl.value) qeDateEl.value = getToday();
 }
 
-let suppliesFilter = '';
-function filterSupplies(cat) {
-    suppliesFilter = cat;
-    document.querySelectorAll('#supplies-filters .filter-chip').forEach(el => el.classList.toggle('active', el.textContent === (cat || '全部')));
-    renderSuppliesList(cat ? getSupplies().filter(s => s.category === cat) : getSupplies());
+function changeSuppliesYear(delta) {
+    suppliesYear += delta;
+    renderSupplies();
+    updateExpenseBreakdown();
 }
 
-function renderSuppliesList(list) {
-    const el = document.getElementById('supplies-list');
-    if (!list.length) { el.innerHTML = '<div class="empty-state">🎁 还没有辅料采购记录</div>'; return; }
-    el.innerHTML = list.map(s => `<div class="list-item"><div class="item-top"><div class="item-top-left"><span class="badge badge-purple">${s.category}</span><span class="item-model">${s.name}</span></div><button class="item-delete" onclick="confirmDeleteSupply('${s.id}')">✕</button></div><div class="item-stats"><div class="item-stat"><span class="item-stat-label">数量</span><span class="item-stat-value">${s.quantity}</span></div><div class="item-stat"><span class="item-stat-label">金额</span><span class="item-stat-value danger">¥${fmt(s.amount)}</span></div></div><div class="item-bottom"><span>${s.date}</span>${s.note ? `<span>${s.note}</span>` : ''}</div></div>`).join('');
+function changeSuppliesMonth(delta) {
+    suppliesMonth += delta;
+    if (suppliesMonth < 1) { suppliesMonth = 12; suppliesYear--; }
+    else if (suppliesMonth > 12) { suppliesMonth = 1; suppliesYear++; }
+    renderSupplies();
+    updateExpenseBreakdown();
 }
 
 function submitSupply() {
@@ -696,21 +801,204 @@ function submitSupply() {
 
 function confirmDeleteSupply(id) { showModal('确认删除', '确定要删除这条辅料记录吗？', () => { deleteSupply(id); showToast('已删除'); refreshAll(); }); }
 
+// --- 快速录入 ---
+function getQeDate() {
+    return document.getElementById('qe-date').value || getToday();
+}
+
+function quickCashback() {
+    const qty = parseInt(document.getElementById('qe-cashback-qty').value) || 1;
+    const amount = qty * 2;
+    const supplies = getStore(KEYS.SUPPLIES);
+    supplies.unshift({
+        id: genId(), date: getQeDate(), category: '好评返现',
+        name: `好评返现 ${qty}笔`, quantity: qty, amount: amount, note: ''
+    });
+    setStore(KEYS.SUPPLIES, supplies);
+    document.getElementById('qe-cashback-qty').value = '1';
+    showToast(`已记录好评返现 ${qty}笔 ¥${amount}`);
+    refreshAll();
+}
+
+function quickExpress() {
+    const amount = parseFloat(document.getElementById('qe-express-amount').value);
+    if (!amount || amount <= 0) { showToast('请输入金额'); return; }
+    const note = document.getElementById('qe-express-note').value.trim();
+    const supplies = getStore(KEYS.SUPPLIES);
+    supplies.unshift({
+        id: genId(), date: getQeDate(), category: '快递费',
+        name: '快递费', quantity: 1, amount: amount, note: note
+    });
+    setStore(KEYS.SUPPLIES, supplies);
+    document.getElementById('qe-express-amount').value = '';
+    document.getElementById('qe-express-note').value = '';
+    showToast(`已记录快递费 ¥${fmt(amount)}`);
+    refreshAll();
+}
+
+function quickSample() {
+    const amount = parseFloat(document.getElementById('qe-sample-amount').value);
+    if (!amount || amount <= 0) { showToast('请输入金额'); return; }
+    const note = document.getElementById('qe-sample-note').value.trim();
+    const supplies = getStore(KEYS.SUPPLIES);
+    supplies.unshift({
+        id: genId(), date: getQeDate(), category: '打样费用',
+        name: '打样费用', quantity: 1, amount: amount, note: note
+    });
+    setStore(KEYS.SUPPLIES, supplies);
+    document.getElementById('qe-sample-amount').value = '';
+    document.getElementById('qe-sample-note').value = '';
+    showToast(`已记录打样费用 ¥${fmt(amount)}`);
+    refreshAll();
+}
+
+// ============================================
+// 生活消费
+// ============================================
+
+function quickLife() {
+    const amount = parseFloat(document.getElementById('qe-life-amount').value);
+    if (!amount || amount <= 0) { showToast('请输入金额'); return; }
+    const note = document.getElementById('qe-life-note').value.trim();
+    const supplies = getStore(KEYS.SUPPLIES);
+    supplies.unshift({
+        id: genId(), date: getQeDate(), category: '生活消费',
+        name: '生活消费', quantity: 1, amount: amount, note: note
+    });
+    setStore(KEYS.SUPPLIES, supplies);
+    document.getElementById('qe-life-amount').value = '';
+    document.getElementById('qe-life-note').value = '';
+    showToast(`已记录生活消费 ¥${fmt(amount)}`);
+    refreshAll();
+}
+
+
+// ============================================
+// 支出分项统计
+// ============================================
+
+function updateExpenseBreakdown() {
+    const yPrefix = String(suppliesYear);
+    const supplies = getStore(KEYS.SUPPLIES).filter(s => s.date && s.date.startsWith(yPrefix));
+    const cats = { '好评返现': 0, '快递费': 0, '打样费用': 0, '生活消费': 0 };
+    supplies.forEach(s => { if (cats[s.category] !== undefined) cats[s.category] += s.amount; });
+    document.getElementById('eb-cashback').textContent = '¥' + fmt(cats['好评返现']);
+    document.getElementById('eb-express').textContent = '¥' + fmt(cats['快递费']);
+    document.getElementById('eb-sample').textContent = '¥' + fmt(cats['打样费用']);
+    document.getElementById('eb-life').textContent = '¥' + fmt(cats['生活消费']);
+}
+
+
+// ============================================
+// 型号自动补全
+// ============================================
+
+const MODEL_PRESETS = {
+    'i': [
+        'iPhone 14', 'iPhone 14 Plus', 'iPhone 14 Pro', 'iPhone 14 Pro Max',
+        'iPhone 15', 'iPhone 15 Plus', 'iPhone 15 Pro', 'iPhone 15 Pro Max',
+        'iPhone 16', 'iPhone 16 Plus', 'iPhone 16 Pro', 'iPhone 16 Pro Max',
+        'iPhone 17', 'iPhone 17 Plus', 'iPhone 17 Pro', 'iPhone 17 Pro Max'
+    ],
+    'h': [
+        'HUAWEI Mate60', 'HUAWEI Mate60 Pro',
+        'HUAWEI Mate70', 'HUAWEI Mate70 Pro',
+        'HUAWEI P70', 'HUAWEI P70 Pro',
+        'HUAWEI P80', 'HUAWEI P80 Pro'
+    ],
+    'x': [
+        'XIAOMI 15 Pro'
+    ]
+};
+
+function setupModelAutocomplete(inputId, listId) {
+    const input = document.getElementById(inputId);
+    const list = document.getElementById(listId);
+    if (!input || !list) return;
+
+    input.addEventListener('input', function () {
+        const val = this.value.toLowerCase().trim();
+        list.innerHTML = '';
+        list.classList.remove('show');
+        if (!val) return;
+
+        let matches = [];
+        // 按首字母匹配预设
+        Object.keys(MODEL_PRESETS).forEach(prefix => {
+            if (val.startsWith(prefix)) {
+                const keyword = val.slice(prefix.length).toLowerCase();
+                MODEL_PRESETS[prefix].forEach(model => {
+                    if (!keyword || model.toLowerCase().includes(keyword)) {
+                        matches.push(model);
+                    }
+                });
+            }
+        });
+
+        if (matches.length === 0) return;
+        matches.forEach(model => {
+            const div = document.createElement('div');
+            div.className = 'autocomplete-item';
+            div.textContent = model;
+            div.addEventListener('click', () => {
+                input.value = model;
+                list.classList.remove('show');
+            });
+            list.appendChild(div);
+        });
+        list.classList.add('show');
+    });
+
+    // 点击外部关闭
+    document.addEventListener('click', e => {
+        if (!input.contains(e.target) && !list.contains(e.target)) {
+            list.classList.remove('show');
+        }
+    });
+}
+
 
 // ============================================
 // 销售页
 // ============================================
 
+let salesYear = new Date().getFullYear();
+let salesMonth = new Date().getMonth() + 1;
+
 function renderSalesPage() {
-    const now = new Date();
-    const report = getMonthlyReport(now.getFullYear(), now.getMonth() + 1);
+    const report = getMonthlyReport(salesYear, salesMonth);
     document.getElementById('sales-month-revenue').textContent = '¥' + fmt(report.totalRevenue);
+    document.getElementById('sales-month-label').textContent = salesMonth + '月销售';
+    document.getElementById('sales-month-profit-label').textContent = salesMonth + '月利润';
     const profitEl = document.getElementById('sales-month-profit');
     profitEl.textContent = '¥' + fmt(report.grossProfit);
     profitEl.className = 'summary-value ' + (report.grossProfit >= 0 ? 'success' : 'danger');
+
+    // 年度数据
+    document.getElementById('sales-year-label').textContent = salesYear + '年';
+    document.getElementById('sales-year-rev-title').textContent = salesYear + '年销售';
+    document.getElementById('sales-year-profit-title').textContent = salesYear + '年利润';
+    const yr = getYearlyReport(salesYear);
+    document.getElementById('sales-year-revenue').textContent = '¥' + fmt(yr.totalRevenue);
+    const yrProfitEl = document.getElementById('sales-year-profit');
+    yrProfitEl.textContent = '¥' + fmt(yr.grossProfit);
+    yrProfitEl.className = 'summary-value ' + (yr.grossProfit >= 0 ? 'success' : 'danger');
+
     document.getElementById('sales-count').textContent = '共' + getSales().length + '条';
     const filtered = salesFilter ? getSales().filter(s => s.platform === salesFilter) : getSales();
     renderSalesList(filtered);
+}
+
+function changeSalesYear(delta) {
+    salesYear += delta;
+    renderSalesPage();
+}
+
+function changeSalesMonth(delta) {
+    salesMonth += delta;
+    if (salesMonth < 1) { salesMonth = 12; salesYear--; }
+    else if (salesMonth > 12) { salesMonth = 1; salesYear++; }
+    renderSalesPage();
 }
 
 function filterSales(platform) {
@@ -722,7 +1010,7 @@ function filterSales(platform) {
 function renderSalesList(list) {
     const el = document.getElementById('sales-list');
     if (!list.length) { el.innerHTML = '<div class="empty-state">💰 还没有销售记录</div>'; return; }
-    el.innerHTML = list.map(s => `<div class="list-item"><div class="item-top"><div class="item-top-left"><span class="badge ${s.platform === '淘宝' ? 'badge-orange' : 'badge-xhs'}">${s.platform}</span>${s.design ? `<span class="badge badge-purple">${s.design}</span>` : ''}<span class="item-model">${s.model}</span></div><button class="item-delete" onclick="confirmDeleteSale('${s.id}')">✕</button></div><div class="item-stats"><div class="item-stat"><span class="item-stat-label">数量</span><span class="item-stat-value">${s.quantity}件</span></div><div class="item-stat"><span class="item-stat-label">售价</span><span class="item-stat-value">¥${s.sellingPrice}/件</span></div><div class="item-stat"><span class="item-stat-label">收入</span><span class="item-stat-value success">¥${fmt(s.totalRevenue)}</span></div><div class="item-stat"><span class="item-stat-label">利润</span><span class="item-stat-value ${s.profit >= 0 ? 'success' : 'danger'}">¥${fmt(s.profit)}</span></div></div><div class="item-bottom"><span>${s.date}</span><span>成本：进货${s.purchaseCost}+物流${s.logistics}+包装${s.packaging}+险${s.insurance}</span></div></div>`).join('');
+    el.innerHTML = list.map(s => `<div class="list-item"><div class="item-top"><div class="item-top-left"><span class="badge ${s.platform === '淘宝' ? 'badge-orange' : s.platform === '抖音' ? 'badge-douyin' : 'badge-xhs'}">${s.platform}</span>${s.design ? `<span class="badge badge-purple">${s.design}</span>` : ''}<span class="item-model">${s.model}</span></div><button class="item-delete" onclick="confirmDeleteSale('${s.id}')">✕</button></div><div class="item-stats"><div class="item-stat"><span class="item-stat-label">数量</span><span class="item-stat-value">${s.quantity}件</span></div><div class="item-stat"><span class="item-stat-label">售价</span><span class="item-stat-value">¥${s.sellingPrice}/件</span></div><div class="item-stat"><span class="item-stat-label">收入</span><span class="item-stat-value success">¥${fmt(s.totalRevenue)}</span></div><div class="item-stat"><span class="item-stat-label">利润</span><span class="item-stat-value ${s.profit >= 0 ? 'success' : 'danger'}">¥${fmt(s.profit)}</span></div></div><div class="item-bottom"><span>${s.date}</span><span>成本：进货${s.purchaseCost}+物流${s.logistics}+包装${s.packaging}+险${s.insurance}</span></div></div>`).join('');
 }
 
 function submitSale() {
@@ -731,10 +1019,12 @@ function submitSale() {
     const price = document.getElementById('s-price').value;
     const cost = document.getElementById('s-cost').value;
     if (!model || !quantity || !price || !cost) { showToast('请填写完整信息', true); return; }
-    addSale({ date: document.getElementById('s-date').value, platform: currentPlatform, design: document.getElementById('s-design').value, model, quantity, sellingPrice: price, purchaseCost: cost, logistics: document.getElementById('s-logistics').value || 4, packaging: document.getElementById('s-packaging').value || 3, insurance: document.getElementById('s-insurance').value || 1.5, note: document.getElementById('s-note').value });
+    const commissionVal = document.querySelector('input[name="s-commission"]:checked')?.value || '0';
+    addSale({ date: document.getElementById('s-date').value, platform: currentPlatform, design: document.getElementById('s-design').value, model, quantity, sellingPrice: price, purchaseCost: cost, logistics: document.getElementById('s-logistics').value || 4, packaging: document.getElementById('s-packaging').value || 3, insurance: document.getElementById('s-insurance').value || 1.5, commission: commissionVal, note: document.getElementById('s-note').value });
     showToast('销售记录已保存 ✓ 云端同步中');
     ['s-design', 's-model', 's-price', 's-cost', 's-note'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('s-quantity').value = '1';
+    document.querySelector('input[name="s-commission"][value="0"]').checked = true;
     document.getElementById('s-profit-preview').style.display = 'none';
     toggleForm('sales');
     refreshAll();
@@ -747,18 +1037,39 @@ function confirmDeleteSale(id) { showModal('确认删除', '确定要删除这�
 // 退货页
 // ============================================
 
+let returnsYear = new Date().getFullYear();
+let returnsMonth = new Date().getMonth() + 1;
+
 function renderReturns() {
-    const returns = getReturns();
-    const now = new Date();
-    const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const mr = returns.filter(r => r.date.startsWith(prefix));
+    const allReturns = getReturns();
+    const ym = returnsYear + '-' + String(returnsMonth).padStart(2, '0');
+    const mr = allReturns.filter(r => r.date && r.date.startsWith(ym));
+    const yPrefix = String(returnsYear);
+    const yr = allReturns.filter(r => r.date && r.date.startsWith(yPrefix));
     document.getElementById('returns-month-count').textContent = mr.reduce((s, r) => s + r.quantity, 0) + '件';
     document.getElementById('returns-month-amount').textContent = '¥' + fmt(mr.reduce((s, r) => s + r.refundAmount, 0));
-    document.getElementById('returns-count').textContent = '共' + returns.length + '条';
+    document.getElementById('returns-month-label').textContent = returnsMonth + '月退货';
+    document.getElementById('returns-amount-label').textContent = returnsMonth + '月退款';
+    document.getElementById('returns-year-label').textContent = returnsYear + '年';
+    document.getElementById('returns-year-title').textContent = returnsYear + '年退款';
+    document.getElementById('returns-year-amount').textContent = '¥' + fmt(yr.reduce((s, r) => s + r.refundAmount, 0));
+    document.getElementById('returns-count').textContent = '共' + allReturns.length + '条';
 
     const el = document.getElementById('returns-list');
-    if (!returns.length) { el.innerHTML = '<div class="empty-state">↩️ 还没有退货记录</div>'; return; }
-    el.innerHTML = returns.map(r => `<div class="list-item"><div class="item-top"><div class="item-top-left"><span class="badge ${r.platform === '淘宝' ? 'badge-orange' : 'badge-xhs'}">${r.platform}</span>${r.design ? `<span class="badge badge-purple">${r.design}</span>` : ''}<span class="item-model">${r.model}</span></div><button class="item-delete" onclick="confirmDeleteReturn('${r.id}')">✕</button></div><div class="item-stats"><div class="item-stat"><span class="item-stat-label">退货数量</span><span class="item-stat-value">${r.quantity}件</span></div><div class="item-stat"><span class="item-stat-label">退款金额</span><span class="item-stat-value danger">¥${fmt(r.refundAmount)}</span></div></div><div class="item-bottom"><span>${r.date}</span>${r.reason ? `<span>原因：${r.reason}</span>` : ''}</div></div>`).join('');
+    if (!allReturns.length) { el.innerHTML = '<div class="empty-state">↩️ 还没有退货记录</div>'; return; }
+    el.innerHTML = allReturns.map(r => `<div class="list-item"><div class="item-top"><div class="item-top-left"><span class="badge ${r.platform === '淘宝' ? 'badge-orange' : r.platform === '抖音' ? 'badge-douyin' : 'badge-xhs'}">${r.platform}</span>${r.design ? `<span class="badge badge-purple">${r.design}</span>` : ''}<span class="item-model">${r.model}</span></div><button class="item-delete" onclick="confirmDeleteReturn('${r.id}')">✕</button></div><div class="item-stats"><div class="item-stat"><span class="item-stat-label">退货数量</span><span class="item-stat-value">${r.quantity}件</span></div><div class="item-stat"><span class="item-stat-label">退款金额</span><span class="item-stat-value danger">¥${fmt(r.refundAmount)}</span></div></div><div class="item-bottom"><span>${r.date}</span>${r.reason ? `<span>原因：${r.reason}</span>` : ''}</div></div>`).join('');
+}
+
+function changeReturnsYear(delta) {
+    returnsYear += delta;
+    renderReturns();
+}
+
+function changeReturnsMonth(delta) {
+    returnsMonth += delta;
+    if (returnsMonth < 1) { returnsMonth = 12; returnsYear--; }
+    else if (returnsMonth > 12) { returnsMonth = 1; returnsYear++; }
+    renderReturns();
 }
 
 function submitReturn() {
@@ -777,6 +1088,81 @@ function submitReturn() {
 
 function confirmDeleteReturn(id) { showModal('确认删除', '确定删除退货记录吗？库存也会调整。', () => { deleteReturn(id); showToast('已删除'); refreshAll(); }); }
 
+
+// ============================================
+// 推广费用页
+// ============================================
+
+let promoYear = new Date().getFullYear();
+let promoMonth = new Date().getMonth() + 1;
+
+function renderPromotion() {
+    const allPromos = getStore(KEYS.PROMOTIONS);
+    const ym = promoYear + '-' + String(promoMonth).padStart(2, '0');
+    const monthPromos = allPromos.filter(p => p.date && p.date.startsWith(ym));
+    const yPrefix = String(promoYear);
+    const yearPromos = allPromos.filter(p => p.date && p.date.startsWith(yPrefix));
+    document.getElementById('promo-month-total').textContent = '¥' + fmt(monthPromos.reduce((s, p) => s + p.amount, 0));
+    document.getElementById('promo-month-label').textContent = promoMonth + '月推广支出';
+    document.getElementById('promo-all-total').textContent = '¥' + fmt(yearPromos.reduce((s, p) => s + p.amount, 0));
+    document.getElementById('promo-year-label').textContent = promoYear + '年';
+    document.getElementById('promo-year-title').textContent = promoYear + '年推广支出';
+    document.getElementById('promo-count').textContent = '共' + allPromos.length + '条';
+
+    // 设置日期默认值
+    const dateEl = document.getElementById('promo-date');
+    if (dateEl && !dateEl.value) dateEl.value = getToday();
+
+    const el = document.getElementById('promo-list');
+    if (!allPromos.length) { el.innerHTML = '<div class="empty-state">📣 还没有推广记录</div>'; return; }
+    el.innerHTML = allPromos.map(p => `<div class="list-item"><div class="item-top"><div class="item-top-left"><span class="badge ${p.type === '博主推广' ? 'badge-purple' : 'badge-orange'}">${p.type}</span></div><button class="item-delete" onclick="confirmDeletePromo('${p.id}')">✕</button></div><div class="item-stats"><div class="item-stat"><span class="item-stat-label">金额</span><span class="item-stat-value danger">¥${fmt(p.amount)}</span></div></div><div class="item-bottom"><span>${p.date}</span>${p.note ? `<span>${p.note}</span>` : ''}</div></div>`).join('');
+}
+
+function changePromoYear(delta) {
+    promoYear += delta;
+    renderPromotion();
+}
+
+function changePromoMonth(delta) {
+    promoMonth += delta;
+    if (promoMonth < 1) { promoMonth = 12; promoYear--; }
+    else if (promoMonth > 12) { promoMonth = 1; promoYear++; }
+    renderPromotion();
+}
+
+function submitPromotion() {
+    const amount = parseFloat(document.getElementById('promo-amount').value);
+    if (!amount || amount <= 0) { showToast('请输入金额', true); return; }
+    const promos = getStore(KEYS.PROMOTIONS);
+    promos.unshift({
+        id: genId(),
+        date: document.getElementById('promo-date').value || getToday(),
+        amount: amount,
+        type: document.getElementById('promo-type').value || '博主推广',
+        note: document.getElementById('promo-note').value.trim()
+    });
+    setStore(KEYS.PROMOTIONS, promos);
+    document.getElementById('promo-amount').value = '';
+    document.getElementById('promo-note').value = '';
+    showToast('推广记录已保存 ✓');
+    toggleForm('promo');
+    refreshAll();
+}
+
+function setPromoType(btn, type) {
+    btn.parentElement.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('promo-type').value = type;
+}
+
+function confirmDeletePromo(id) {
+    showModal('确认删除', '确定要删除这条推广记录吗？', () => {
+        const promos = getStore(KEYS.PROMOTIONS).filter(p => p.id !== id);
+        setStore(KEYS.PROMOTIONS, promos);
+        showToast('已删除');
+        refreshAll();
+    });
+}
 
 // ============================================
 // 库存页
@@ -842,6 +1228,8 @@ function renderReport() {
     else { document.getElementById('rpt-refund-row').style.display = 'none'; }
 
     document.getElementById('rpt-supplies').textContent = '-¥' + fmt(report.totalSupplies);
+    document.getElementById('rpt-promo').textContent = '-¥' + fmt(report.totalPromo);
+    document.getElementById('rpt-orders').textContent = '-¥' + fmt(report.totalOrders);
 
     document.getElementById('rpt-sold-qty').textContent = report.totalSoldQty;
     document.getElementById('rpt-return-qty').textContent = report.totalReturnQty;
@@ -850,7 +1238,7 @@ function renderReport() {
     const pbEl = document.getElementById('platform-breakdown');
     const pb = report.platformBreakdown, platforms = Object.keys(pb);
     if (!platforms.length) pbEl.innerHTML = '<div class="empty-state-sm">暂无数据</div>';
-    else pbEl.innerHTML = platforms.map(name => { const d = pb[name]; return `<div class="platform-item"><div class="platform-header"><span class="badge ${name === '淘宝' ? 'badge-orange' : 'badge-xhs'}">${name}</span><span class="platform-profit ${d.profit >= 0 ? 'success' : 'danger'}">利润 ¥${fmt(d.profit)}</span></div><div class="platform-stats"><span>收入 ¥${fmt(d.revenue)}</span><span>成本 ¥${fmt(d.cost)}</span><span>${d.qty}件</span></div></div>`; }).join('');
+    else pbEl.innerHTML = platforms.map(name => { const d = pb[name]; return `<div class="platform-item"><div class="platform-header"><span class="badge ${name === '淘宝' ? 'badge-orange' : name === '抖音' ? 'badge-douyin' : 'badge-xhs'}">${name}</span><span class="platform-profit ${d.profit >= 0 ? 'success' : 'danger'}">利润 ¥${fmt(d.profit)}</span></div><div class="platform-stats"><span>收入 ¥${fmt(d.revenue)}</span><span>成本 ¥${fmt(d.cost)}</span><span>${d.qty}件</span></div></div>`; }).join('');
 
     const fsEl = document.getElementById('factory-summary');
     const fs = getFactorySummary(reportYear);
@@ -858,6 +1246,58 @@ function renderReport() {
     else { const total = fs.reduce((s, f) => s + f.totalAmount, 0); fsEl.innerHTML = fs.map(f => `<div class="factory-row"><div class="factory-info"><span class="factory-name">${f.factory}</span><span class="factory-meta">${f.orders}笔 · ${f.totalQty}件</span></div><span class="factory-amount danger">¥${fmt(f.totalAmount)}</span></div>`).join('') + `<div class="factory-total"><span class="factory-total-label">全年总计</span><span class="factory-total-value danger">¥${fmt(total)}</span></div>`; }
 
     renderTrendChart();
+
+    // 年度汇总
+    const yr = getYearlyReport(reportYear);
+    document.getElementById('yr-year-label').textContent = reportYear;
+    const yrProfitEl = document.getElementById('yr-profit');
+    yrProfitEl.textContent = '¥' + fmt(yr.grossProfit);
+    yrProfitEl.className = 'profit-big-num ' + (yr.grossProfit >= 0 ? 'success' : 'danger');
+    const yrBadge = document.getElementById('yr-rate-badge');
+    yrBadge.textContent = '利润率 ' + yr.profitRate + '%';
+    yrBadge.className = 'badge ' + (yr.grossProfit >= 0 ? 'badge-green' : 'badge-orange');
+    document.getElementById('yr-revenue').textContent = '+¥' + fmt(yr.totalRevenue);
+    document.getElementById('yr-cost').textContent = '-¥' + fmt(yr.totalCost);
+    if (yr.totalRefund > 0) { document.getElementById('yr-refund-row').style.display = 'flex'; document.getElementById('yr-refund').textContent = '-¥' + fmt(yr.totalRefund); }
+    else { document.getElementById('yr-refund-row').style.display = 'none'; }
+    document.getElementById('yr-supplies').textContent = '-¥' + fmt(yr.totalSupplies);
+    document.getElementById('yr-promo').textContent = '-¥' + fmt(yr.totalPromo);
+    document.getElementById('yr-orders').textContent = '-¥' + fmt(yr.totalOrders);
+    document.getElementById('yr-sold-qty').textContent = yr.totalSoldQty;
+    document.getElementById('yr-return-qty').textContent = yr.totalReturnQty;
+    document.getElementById('yr-purchase-spend').textContent = '¥' + fmt(yr.totalPurchaseSpend);
+}
+
+function getYearlyReport(year) {
+    const yPrefix = String(year);
+    const ys = getSales().filter(s => s.date.startsWith(yPrefix));
+    const yp = getPurchases().filter(p => p.date.startsWith(yPrefix));
+    const yr = getReturns().filter(r => r.date.startsWith(yPrefix));
+    const ysup = getSupplies().filter(s => s.date.startsWith(yPrefix));
+    const ypromo = getStore(KEYS.PROMOTIONS).filter(p => p.date && p.date.startsWith(yPrefix));
+    const yorders = getStore(KEYS.ORDERS).filter(o => o.date && o.date.startsWith(yPrefix));
+
+    const totalRevenue = ys.reduce((s, x) => s + x.totalRevenue, 0);
+    const totalCost = ys.reduce((s, x) => s + x.totalCost, 0);
+    const totalRefund = yr.reduce((s, x) => s + (x.refundAmount || 0), 0);
+    const totalSupplies = ysup.reduce((s, x) => s + x.amount, 0);
+    const totalPromo = ypromo.reduce((s, x) => s + x.amount, 0);
+    const totalOrders = yorders.reduce((s, x) => s + x.amount, 0);
+    const grossProfit = totalRevenue - totalCost - totalRefund - totalSupplies - totalPromo - totalOrders;
+
+    return {
+        totalRevenue: Math.round(totalRevenue * 100) / 100,
+        totalCost: Math.round(totalCost * 100) / 100,
+        totalRefund: Math.round(totalRefund * 100) / 100,
+        totalSupplies: Math.round(totalSupplies * 100) / 100,
+        totalPromo: Math.round(totalPromo * 100) / 100,
+        totalOrders: Math.round(totalOrders * 100) / 100,
+        grossProfit: Math.round(grossProfit * 100) / 100,
+        totalSoldQty: ys.reduce((s, x) => s + x.quantity, 0),
+        totalReturnQty: yr.reduce((s, x) => s + x.quantity, 0),
+        totalPurchaseSpend: Math.round(yp.reduce((s, x) => s + x.totalCost, 0) * 100) / 100,
+        profitRate: totalRevenue > 0 ? Math.round(grossProfit / totalRevenue * 10000) / 100 : 0
+    };
 }
 
 function changeMonth(delta) {
@@ -873,7 +1313,9 @@ function renderTrendChart() {
     document.getElementById('trend-chart').innerHTML = trend.map(t => {
         const rh = Math.max(4, Math.round((t.revenue / maxVal) * 120));
         const ph = Math.max(4, Math.round((Math.abs(t.profit) / maxVal) * 120));
-        return `<div class="chart-group"><div class="chart-bar-pair"><div class="chart-bar revenue" style="height:${rh}px" title="收入 ¥${fmt(t.revenue)}"></div><div class="chart-bar profit" style="height:${ph}px" title="利润 ¥${fmt(t.profit)}"></div></div><span class="chart-label">${t.label}</span></div>`;
+        const rLabel = t.revenue > 0 ? `¥${fmt(t.revenue)}` : '';
+        const pLabel = t.profit !== 0 ? `¥${fmt(t.profit)}` : '';
+        return `<div class="chart-group"><div class="chart-bar-pair"><div class="chart-bar-wrap"><span class="bar-value">${rLabel}</span><div class="chart-bar revenue" style="height:${rh}px"></div></div><div class="chart-bar-wrap"><span class="bar-value">${pLabel}</span><div class="chart-bar profit" style="height:${ph}px"></div></div></div><span class="chart-label">${t.label}</span></div>`;
     }).join('');
 }
 

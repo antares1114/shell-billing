@@ -685,6 +685,13 @@ body {
     font-weight: 600;
 }
 
+.platform-btn.douyin.active {
+    background: linear-gradient(135deg, #25f4ee, #fe2c55);
+    color: #fff;
+    border-color: #fe2c55;
+    font-weight: 600;
+}
+
 /* 预览框 */
 .preview-box {
     display: flex;
@@ -835,6 +842,12 @@ body {
     border-color: #e74c3c;
 }
 
+.filter-chip.douyin-chip.active {
+    background: linear-gradient(135deg, #25f4ee, #fe2c55);
+    border-color: #fe2c55;
+    color: #fff;
+}
+
 /* ============ 列表项 ============ */
 .item-list {
     max-height: 600px;
@@ -958,6 +971,11 @@ body {
 .badge-xhs {
     background: rgba(231, 76, 60, 0.15);
     color: #fd79a8;
+}
+
+.badge-douyin {
+    background: linear-gradient(135deg, rgba(37, 244, 238, 0.15), rgba(254, 44, 85, 0.15));
+    color: #fe2c55;
 }
 
 /* ============ 颜色辅助 ============ */
@@ -1357,6 +1375,22 @@ body {
     height: 130px;
 }
 
+.chart-bar-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    height: 100%;
+}
+
+.bar-value {
+    font-size: 10px;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    margin-bottom: 2px;
+    font-weight: 500;
+}
+
 .chart-bar {
     width: 20px;
     border-radius: 4px 4px 0 0;
@@ -1404,6 +1438,170 @@ body {
 
 .legend-dot.green {
     background: var(--color-success);
+}
+
+/* ============ 博主佣金 ============ */
+.commission-row {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    padding: 6px 0;
+}
+
+.commission-opt {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 14px;
+    cursor: pointer;
+    color: var(--color-text);
+}
+
+.commission-opt input[type="radio"] {
+    accent-color: var(--color-primary);
+}
+
+/* ============ 支出分项 ============ */
+.expense-breakdown {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 10px 20px;
+    margin-bottom: 12px;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(232, 114, 154, 0.1);
+}
+
+.eb-item {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+}
+
+.eb-item b {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+/* ============ 型号自动补全 ============ */
+.autocomplete-wrap {
+    position: relative;
+}
+
+.autocomplete-list {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(232, 114, 154, 0.2);
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 50;
+    box-shadow: 0 8px 24px rgba(180, 100, 140, 0.12);
+}
+
+.autocomplete-list.show {
+    display: block;
+}
+
+.autocomplete-item {
+    padding: 8px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s;
+    color: var(--color-text);
+}
+
+.autocomplete-item:hover {
+    background: rgba(232, 114, 154, 0.1);
+}
+
+/* ============ 快速记账 ============ */
+
+.mini-month-nav {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.mini-arrow {
+    background: none;
+    border: none;
+    color: var(--color-primary);
+    font-size: 10px;
+    cursor: pointer;
+    padding: 2px;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.mini-arrow:hover {
+    opacity: 1;
+}
+
+.quick-date-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 4px 10px;
+}
+
+.quick-expense-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+}
+
+.quick-expense-card {
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(232, 114, 154, 0.12);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    text-align: center;
+}
+
+.quick-expense-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.quick-expense-desc {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    margin-bottom: 12px;
+}
+
+.quick-expense-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.quick-input {
+    flex: 1;
+    height: 36px !important;
+    padding: 0 10px !important;
+    font-size: 13px !important;
+    text-align: center;
+}
+
+.quick-btn {
+    height: 36px !important;
+    padding: 0 16px !important;
+    font-size: 13px !important;
+    letter-spacing: 1px !important;
+    min-width: 60px;
+}
+
+.quick-note {
+    height: 32px !important;
+    padding: 0 10px !important;
+    font-size: 12px !important;
 }
 
 /* 数据管理 */
@@ -1992,6 +2190,10 @@ body {
 
     .profit-big-num {
         font-size: 32px;
+    }
+
+    .quick-expense-grid {
+        grid-template-columns: 1fr;
     }
 
     .data-mgmt-grid {
