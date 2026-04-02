@@ -364,6 +364,12 @@ function generateCSV() {
     csv += '\n【退货记录】\n日期,平台,款名,型号,数量,退款金额,原因\n';
     getReturns().forEach(r => { csv += `${r.date},${r.platform},${r.design},${r.model},${r.quantity},${r.refundAmount},${r.reason}\n`; });
 
+    csv += '\n【订货转账】\n日期,工厂,商品,转账金额,备注\n';
+    getStore(KEYS.ORDERS).forEach(o => { csv += `${o.date},${o.factory},${o.product || ''},${o.amount},${o.note || ''}\n`; });
+
+    csv += '\n【推广费用】\n日期,类型,金额,备注\n';
+    getStore(KEYS.PROMOTIONS).forEach(p => { csv += `${p.date},${p.type},${p.amount},${p.note || ''}\n`; });
+
     csv += '\n【库存汇总】\n款名,型号,进货总量,已售总量,退货总量,库存量,进货均价,积压成本\n';
     getInventorySummary().forEach(i => { csv += `${i.design},${i.model},${i.totalPurchased},${i.totalSold},${i.totalReturned},${i.stock},${i.avgCost},${i.stockValue}\n`; });
 
@@ -1425,18 +1431,19 @@ function exportData() {
 }
 
 function backupData() {
-    const backup = {
-        version: '3.0', exportDate: new Date().toISOString(), app: '壳记账', data: {
-            purchases: getPurchases(), sales: getSales(), returns: getReturns(), supplies: getSupplies(),
-            factories: getFactories(), designs: getDesigns(), supplyCats: getSupplyCats()
-        }
-    };
+    const data = {};
+    Object.values(KEYS).forEach(key => {
+        const val = localStorage.getItem(key);
+        if (val) data[key] = JSON.parse(val);
+    });
+    const backup = { version: '3.1', exportDate: new Date().toISOString(), app: '壳记账', data: data };
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = '壳记账_备份_' + getToday() + '.json';
     document.body.appendChild(link); link.click(); document.body.removeChild(link);
-    showToast(`备份成功 ✓ ${backup.data.purchases.length}条进货 + ${backup.data.sales.length}条销售`);
+    const counts = Object.keys(data).length;
+    showToast(`备份成功 ✓ 共 ${counts} 项数据`);
 }
 
 function restoreData(input) {
@@ -1446,17 +1453,15 @@ function restoreData(input) {
     reader.onload = function (e) {
         try {
             const backup = JSON.parse(e.target.result);
-            if (!backup.data || !backup.data.purchases || !backup.data.sales) { showToast('文件格式不正确', true); input.value = ''; return; }
-            const p = backup.data.purchases.length, s = backup.data.sales.length;
+            if (!backup.data) { showToast('文件格式不正确', true); input.value = ''; return; }
             const dateStr = backup.exportDate ? new Date(backup.exportDate).toLocaleDateString('zh-CN') : '未知';
-            showModal('确认恢复数据', `将恢复：${p}条进货 + ${s}条销售（备份日期：${dateStr}）。当前数据会被覆盖，同时同步到云端。`, () => {
-                setStore(KEYS.PURCHASES, backup.data.purchases || []);
-                setStore(KEYS.SALES, backup.data.sales || []);
-                setStore(KEYS.RETURNS, backup.data.returns || []);
-                setStore(KEYS.SUPPLIES, backup.data.supplies || []);
-                setStore(KEYS.FACTORIES, backup.data.factories || []);
-                setStore(KEYS.DESIGNS, backup.data.designs || []);
-                setStore(KEYS.SUPPLY_CATS, backup.data.supplyCats || []);
+            const keyCount = Object.keys(backup.data).length;
+            showModal('确认恢复数据', `将恢复 ${keyCount} 项数据（备份日期：${dateStr}）。当前数据会被覆盖并同步到云端。`, () => {
+                Object.entries(backup.data).forEach(([key, value]) => {
+                    if (Array.isArray(value)) {
+                        setStore(key, value);
+                    }
+                });
                 showToast('恢复成功 ✓ 数据已同步到云端');
                 refreshAll();
             });
@@ -1673,49 +1678,3 @@ function submitBracketCost() {
 
 function confirmDeleteShellCost(id) { showModal('确认删除', '删除这条壳体成本记录？', () => { deleteShellCost(id); showToast('已删除'); renderCostRef(); }); }
 function confirmDeleteBracketCost(id) { showModal('确认删除', '删除这条支架成本记录？', () => { deleteBracketCost(id); showToast('已删除'); renderCostRef(); }); }
-
-// ============================================
-// 数据导出 / 导入
-// ============================================
-
-function exportData() {
-    const data = {};
-    Object.values(KEYS).forEach(key => {
-        const val = localStorage.getItem(key);
-        if (val) data[key] = JSON.parse(val);
-    });
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = '壳记账_备份_' + new Date().toISOString().split('T')[0] + '.json';
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast('数据已导出 ✓');
-}
-
-function importData(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function (e) {
-        try {
-            const data = JSON.parse(e.target.result);
-            let count = 0;
-            Object.entries(data).forEach(([key, value]) => {
-                if (Array.isArray(value)) {
-                    localStorage.setItem(key, JSON.stringify(value));
-                    cache[key] = value;
-                    pushToCloud(key, value);
-                    count++;
-                }
-            });
-            showToast(`成功导入 ${count} 项数据 ✓`);
-            refreshAll();
-        } catch (err) {
-            showToast('导入失败：文件格式不正确', true);
-        }
-    };
-    reader.readAsText(file);
-    event.target.value = '';
-}
