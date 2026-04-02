@@ -69,6 +69,14 @@
                 <span class="nav-icon">📋</span>
                 <span class="nav-label">库存管理</span>
             </a>
+            <a class="nav-item" data-view="salary" onclick="switchView('salary')">
+                <span class="nav-icon">💸</span>
+                <span class="nav-label">发工资</span>
+            </a>
+            <a class="nav-item" data-view="costref" onclick="switchView('costref')">
+                <span class="nav-icon">📝</span>
+                <span class="nav-label">成本参考</span>
+            </a>
             <a class="nav-item" data-view="report" onclick="switchView('report')">
                 <span class="nav-icon">📈</span>
                 <span class="nav-label">月度报表</span>
@@ -118,6 +126,11 @@
                     <div class="kpi-label" id="kpi-supplies-label">3月辅料支出</div>
                     <div class="kpi-value" id="kpi-supplies">¥0.00</div>
                     <div class="kpi-sub" id="kpi-supplies-qty">0 笔</div>
+                </div>
+                <div class="kpi-card" style="background:linear-gradient(135deg,#e8f5e9,#c8e6c9)">
+                    <div class="kpi-label">可分配余额</div>
+                    <div class="kpi-value success" id="kpi-balance">¥0.00</div>
+                    <div class="kpi-sub" id="kpi-balance-sub">累计利润 - 已发工资</div>
                 </div>
             </div>
 
@@ -211,6 +224,10 @@
                         <div class="form-group half">
                             <label class="form-label">数量</label>
                             <input type="number" class="form-input" id="p-quantity" placeholder="0" min="1">
+                        </div>
+                        <div class="form-group half">
+                            <label class="form-label">单价（元）</label>
+                            <input type="number" class="form-input" id="p-unitcost" placeholder="0" min="0" step="0.1">
                         </div>
                     </div>
                     <div class="form-group">
@@ -499,16 +516,11 @@
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label class="form-label">款名</label>
-                            <input type="text" class="form-input" id="s-design" placeholder="如：浪漫花纹">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">手机壳型号</label>
-                            <div class="autocomplete-wrap">
-                                <input type="text" class="form-input" id="s-model" placeholder="输入i/h/x快速选型号"
-                                    autocomplete="off">
-                                <div class="autocomplete-list" id="s-model-list"></div>
-                            </div>
+                            <label class="form-label">款名 + 型号（输入搜索或下拉选择）</label>
+                            <input type="text" class="form-input" id="s-product" list="product-list"
+                                placeholder="输入搜索已进货的款型" autocomplete="off" onfocus="populateSaleProductDropdown()"
+                                onchange="onSaleProductSelect()">
+                            <datalist id="product-list"></datalist>
                         </div>
                     </div>
                     <div class="form-row">
@@ -730,26 +742,23 @@
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label class="form-label">款名</label>
-                            <input type="text" class="form-input" id="r-design" placeholder="如：浪漫花纹">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">手机壳型号</label>
-                            <div class="autocomplete-wrap">
-                                <input type="text" class="form-input" id="r-model" placeholder="输入i/h/x快速选型号"
-                                    autocomplete="off">
-                                <div class="autocomplete-list" id="r-model-list"></div>
-                            </div>
+                            <label class="form-label">款名 + 型号</label>
+                            <input type="text" class="form-input" id="r-product" list="product-list"
+                                placeholder="输入搜索已进货的款型" autocomplete="off" onfocus="populateSaleProductDropdown()">
                         </div>
                     </div>
                     <div class="form-row">
-                        <div class="form-group half">
+                        <div class="form-group third">
                             <label class="form-label">退货数量</label>
                             <input type="number" class="form-input" id="r-quantity" value="1" min="1">
                         </div>
-                        <div class="form-group half">
-                            <label class="form-label">退款金额（元）</label>
-                            <input type="number" class="form-input" id="r-refund" placeholder="如49.9" step="0.1">
+                        <div class="form-group third">
+                            <label class="form-label">物流费（元）</label>
+                            <input type="number" class="form-input" id="r-logistics" value="4" step="0.1">
+                        </div>
+                        <div class="form-group third">
+                            <label class="form-label">运费险（元）</label>
+                            <input type="number" class="form-input" id="r-insurance" value="1.5" step="0.1">
                         </div>
                     </div>
                     <div class="form-group">
@@ -757,7 +766,7 @@
                         <input type="text" class="form-input" id="r-reason" placeholder="如：客户不喜欢">
                     </div>
                     <div class="info-box">
-                        ℹ️ 退货后商品会自动加回库存
+                        ℹ️ 退货后商品自动回库存，损失 = 物流费 + 运费险
                     </div>
                     <button class="btn-primary" onclick="submitReturn()">💾 保存退货记录</button>
                 </div>
@@ -834,7 +843,7 @@
                         <span class="danger" id="rpt-cost">-¥0.00</span>
                     </div>
                     <div class="profit-row" id="rpt-refund-row" style="display:none">
-                        <span>↩️ 退款扣除</span>
+                        <span>↩️ 退货损失</span>
                         <span class="danger" id="rpt-refund">-¥0.00</span>
                     </div>
                     <div class="profit-row" id="rpt-supplies-row">
@@ -908,7 +917,7 @@
                         <span class="danger" id="yr-cost">-¥0.00</span>
                     </div>
                     <div class="profit-row" id="yr-refund-row" style="display:none">
-                        <span>↩️ 退款扣除</span>
+                        <span>↩️ 退货损失</span>
                         <span class="danger" id="yr-refund">-¥0.00</span>
                     </div>
                     <div class="profit-row">
@@ -965,6 +974,224 @@
                         <button class="btn-secondary" style="margin-top:12px" onclick="exportData()">📤 导出
                             CSV</button>
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== 发工资 ===== -->
+        <section class="view" id="view-salary">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">💰 可分配余额</h3>
+                </div>
+                <div class="stock-summary">
+                    <div class="stock-stat">
+                        <span class="stock-num success" id="sal-total-profit">¥0</span>
+                        <span class="stock-desc">累计利润</span>
+                    </div>
+                    <div class="stock-divider"></div>
+                    <div class="stock-stat">
+                        <span class="stock-num danger" id="sal-total-paid">¥0</span>
+                        <span class="stock-desc">已发工资</span>
+                    </div>
+                    <div class="stock-divider"></div>
+                    <div class="stock-stat">
+                        <span class="stock-num" id="sal-balance">¥0</span>
+                        <span class="stock-desc">可分配</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="form-header" onclick="toggleForm('salary')">
+                    <span>💸 发工资</span>
+                    <span class="toggle-arrow" id="salary-arrow">▼</span>
+                </div>
+                <div class="form-body" id="salary-form" style="display:none">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">日期</label>
+                            <input type="date" class="form-input" id="sal-date">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">发放总金额（元）</label>
+                            <input type="number" class="form-input" id="sal-amount" placeholder="如5000" min="0"
+                                step="0.01" oninput="updateSalaryPreview()">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">分配比例</label>
+                        <div class="platform-btns">
+                            <button class="platform-btn taobao active" id="ratio-55"
+                                onclick="setSalaryRatio(50,50)">5:5</button>
+                            <button class="platform-btn xhs" id="ratio-64" onclick="setSalaryRatio(60,40)">6:4</button>
+                            <button class="platform-btn douyin" id="ratio-73"
+                                onclick="setSalaryRatio(70,30)">7:3</button>
+                        </div>
+                    </div>
+                    <div class="profit-preview" id="sal-preview" style="display:none">
+                        <div class="preview-row">
+                            <span>👤 合伙人A</span>
+                            <span class="success" id="sal-person-a">¥0</span>
+                        </div>
+                        <div class="preview-row">
+                            <span>👤 合伙人B</span>
+                            <span class="success" id="sal-person-b">¥0</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">备注（选填）</label>
+                        <input type="text" class="form-input" id="sal-note" placeholder="如：3-4月工资">
+                    </div>
+                    <button class="btn-primary" onclick="submitSalary()">💸 确认发放</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">发放记录</h3>
+                    <span class="badge badge-blue" id="salary-count">共0条</span>
+                </div>
+                <div id="salary-list">
+                    <div class="empty-state">💸 还没有发放记录</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== 成本参考 ===== -->
+        <section class="view" id="view-costref">
+            <!-- 壳体成本表 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">📱 壳体成本表</h3>
+                    <span class="badge badge-blue" id="shell-cost-count">共0条</span>
+                </div>
+                <div class="form-header" onclick="toggleForm('shellcost')">
+                    <span>➕ 新增壳体成本</span>
+                    <span class="toggle-arrow" id="shellcost-arrow">▼</span>
+                </div>
+                <div class="form-body" id="shellcost-form" style="display:none">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">工厂</label>
+                            <input type="text" class="form-input" id="sc-factory" list="factory-list"
+                                placeholder="如：丹卡尔">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">壳体名称</label>
+                            <input type="text" class="form-input" id="sc-shell" placeholder="如：直边哑光">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group half">
+                            <label class="form-label">磁吸壳体（元）</label>
+                            <input type="number" class="form-input" id="sc-magnetic" step="0.1" placeholder="如18">
+                        </div>
+                        <div class="form-group half">
+                            <label class="form-label">非磁吸壳体（元）</label>
+                            <input type="number" class="form-input" id="sc-nonmagnetic" step="0.1" placeholder="如15">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group half">
+                            <label class="form-label">特殊工艺名称</label>
+                            <input type="text" class="form-input" id="sc-special-name" placeholder="如：UV印刷、电镀">
+                        </div>
+                        <div class="form-group half">
+                            <label class="form-label">工艺加价（元）</label>
+                            <input type="number" class="form-input" id="sc-special-price" step="0.1" placeholder="如3">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">备注（选填）</label>
+                        <input type="text" class="form-input" id="sc-note" placeholder="如：含UV印刷">
+                    </div>
+                    <button class="btn-primary" onclick="submitShellCost()">💾 保存</button>
+                </div>
+                <div class="table-wrap">
+                    <table class="ref-table" id="shell-cost-table">
+                        <thead>
+                            <tr>
+                                <th>工厂</th>
+                                <th>壳体名称</th>
+                                <th>磁吸</th>
+                                <th>非磁吸</th>
+                                <th>特殊工艺</th>
+                                <th>加价</th>
+                                <th>备注</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="shell-cost-body">
+                            <tr>
+                                <td colspan="8" class="empty-state">暂无记录</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 磁吸支架成本表 -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">🧲 磁吸支架成本表</h3>
+                    <span class="badge badge-blue" id="bracket-cost-count">共0条</span>
+                </div>
+                <div class="form-header" onclick="toggleForm('bracketcost')">
+                    <span>➕ 新增支架成本</span>
+                    <span class="toggle-arrow" id="bracketcost-arrow">▼</span>
+                </div>
+                <div class="form-body" id="bracketcost-form" style="display:none">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">工厂</label>
+                            <input type="text" class="form-input" id="bc-factory" list="factory-list"
+                                placeholder="如：丹卡尔">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">磁吸支架工艺类型</label>
+                            <input type="text" class="form-input" id="bc-bracket" placeholder="如：圆形支架">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group third">
+                            <label class="form-label">单价（元）</label>
+                            <input type="number" class="form-input" id="bc-price" step="0.1" placeholder="如8">
+                        </div>
+                        <div class="form-group third">
+                            <label class="form-label">特殊工艺名称</label>
+                            <input type="text" class="form-input" id="bc-special-name" placeholder="如：烤漆">
+                        </div>
+                        <div class="form-group third">
+                            <label class="form-label">工艺加价（元）</label>
+                            <input type="number" class="form-input" id="bc-special-price" step="0.1" placeholder="如2">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">备注（选填）</label>
+                        <input type="text" class="form-input" id="bc-note" placeholder="如：含安装">
+                    </div>
+                    <button class="btn-primary" onclick="submitBracketCost()">💾 保存</button>
+                </div>
+                <div class="table-wrap">
+                    <table class="ref-table" id="bracket-cost-table">
+                        <thead>
+                            <tr>
+                                <th>工厂</th>
+                                <th>工艺类型</th>
+                                <th>单价</th>
+                                <th>特殊工艺</th>
+                                <th>加价</th>
+                                <th>备注</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="bracket-cost-body">
+                            <tr>
+                                <td colspan="7" class="empty-state">暂无记录</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </section>
