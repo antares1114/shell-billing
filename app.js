@@ -694,6 +694,7 @@ function renderPurchases() {
 }
 
 function renderPurchaseList(list) {
+    list = list.slice().sort((a, b) => b.date.localeCompare(a.date));
     const el = document.getElementById('purchase-list');
     if (!list.length) { el.innerHTML = '<div class="empty-state">📦 还没有进货记录</div>'; return; }
     el.innerHTML = `<div class="table-wrap"><table class="ref-table"><thead><tr><th>日期</th><th>工厂</th><th>款名</th><th>型号</th><th>数量</th><th>单价</th><th>总成本</th><th></th></tr></thead><tbody>` + list.map(p => `<tr><td>${p.date}</td><td>${p.factory}</td><td>${p.design}</td><td>${p.model}</td><td>${p.quantity}件</td><td>¥${fmt(p.unitCost || 0)}</td><td class="danger">¥${fmt(p.totalCost || 0)}</td><td class="td-delete" onclick="confirmDeletePurchase('${p.id}')">✕</td></tr>`).join('') + `</tbody></table></div>`;
@@ -745,6 +746,7 @@ function renderOrders() {
 
     const el = document.getElementById('order-list');
     if (!orders.length) { el.innerHTML = '<div class="empty-state">💳 ' + orderYear + '年还没有转账记录</div>'; return; }
+    orders.sort((a, b) => b.date.localeCompare(a.date));
     el.innerHTML = `<div class="table-wrap"><table class="ref-table"><thead><tr><th>日期</th><th>工厂</th><th>商品</th><th>转账金额</th><th>备注</th><th></th></tr></thead><tbody>` + orders.map(o => `<tr><td>${o.date}</td><td>${o.factory}</td><td>${o.product || '-'}</td><td class="danger">¥${fmt(o.amount)}</td><td>${o.note || '-'}</td><td class="td-delete" onclick="confirmDeleteOrder('${o.id}')">✕</td></tr>`).join('') + `</tbody></table></div>`;
 }
 
@@ -819,6 +821,7 @@ function renderSupplies() {
     renderSuppliesList(supplies);
 
     function renderSuppliesList(list) {
+        list = list.slice().sort((a, b) => b.date.localeCompare(a.date));
         const el = document.getElementById('supplies-list');
         if (!list.length) { el.innerHTML = '<div class="empty-state">🎁 还没有辅料采购记录</div>'; return; }
         el.innerHTML = `<div class="table-wrap"><table class="ref-table"><thead><tr><th>日期</th><th>分类</th><th>名称</th><th>数量</th><th>金额</th><th>备注</th><th></th></tr></thead><tbody>` + list.map(s => `<tr><td>${s.date}</td><td>${s.category}</td><td>${s.name}</td><td>${s.quantity}</td><td class="danger">¥${fmt(s.amount)}</td><td>${s.note || '-'}</td><td class="td-delete" onclick="confirmDeleteSupply('${s.id}')">✕</td></tr>`).join('') + `</tbody></table></div>`;
@@ -1069,6 +1072,7 @@ function filterSales(platform) {
 }
 
 function renderSalesList(list) {
+    list = list.slice().sort((a, b) => b.date.localeCompare(a.date));
     const el = document.getElementById('sales-list');
     if (!list.length) { el.innerHTML = '<div class="empty-state">💰 还没有销售记录</div>'; return; }
     const pCls = (p) => p === '淘宝' ? 'badge-orange' : p === '抖音' ? 'badge-douyin' : 'badge-xhs';
@@ -1147,6 +1151,7 @@ function renderReturns() {
 
     const el = document.getElementById('returns-list');
     if (!allReturns.length) { el.innerHTML = '<div class="empty-state">↩️ 还没有退货记录</div>'; return; }
+    allReturns.sort((a, b) => b.date.localeCompare(a.date));
     const pCls = (p) => p === '淘宝' ? 'badge-orange' : p === '抖音' ? 'badge-douyin' : 'badge-xhs';
     el.innerHTML = `<div class="table-wrap"><table class="ref-table"><thead><tr><th>日期</th><th>平台</th><th>款名</th><th>型号</th><th>数量</th><th>物流</th><th>运费险</th><th>损失</th><th></th></tr></thead><tbody>` + allReturns.map(r => `<tr><td>${r.date}</td><td><span class="badge ${pCls(r.platform)}">${r.platform}</span></td><td>${r.design || '-'}</td><td>${r.model}</td><td>${r.quantity}件</td><td>¥${r.logistics || 4}</td><td>¥${r.insurance || 1.5}</td><td class="danger">¥${fmt(r.refundAmount || 0)}</td><td class="td-delete" onclick="confirmDeleteReturn('${r.id}')">✕</td></tr>`).join('') + `</tbody></table></div>`;
 }
@@ -1212,6 +1217,7 @@ function renderPromotion() {
 
     const el = document.getElementById('promo-list');
     if (!allPromos.length) { el.innerHTML = '<div class="empty-state">📣 还没有推广记录</div>'; return; }
+    allPromos.sort((a, b) => b.date.localeCompare(a.date));
     el.innerHTML = `<div class="table-wrap"><table class="ref-table"><thead><tr><th>日期</th><th>类型</th><th>金额</th><th>备注</th><th></th></tr></thead><tbody>` + allPromos.map(p => `<tr><td>${p.date}</td><td><span class="badge ${p.type === '博主推广' ? 'badge-purple' : 'badge-orange'}">${p.type}</span></td><td class="danger">¥${fmt(p.amount)}</td><td>${p.note || '-'}</td><td class="td-delete" onclick="confirmDeletePromo('${p.id}')">✕</td></tr>`).join('') + `</tbody></table></div>`;
 }
 
