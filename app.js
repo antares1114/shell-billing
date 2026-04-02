@@ -1673,3 +1673,49 @@ function submitBracketCost() {
 
 function confirmDeleteShellCost(id) { showModal('确认删除', '删除这条壳体成本记录？', () => { deleteShellCost(id); showToast('已删除'); renderCostRef(); }); }
 function confirmDeleteBracketCost(id) { showModal('确认删除', '删除这条支架成本记录？', () => { deleteBracketCost(id); showToast('已删除'); renderCostRef(); }); }
+
+// ============================================
+// 数据导出 / 导入
+// ============================================
+
+function exportData() {
+    const data = {};
+    Object.values(KEYS).forEach(key => {
+        const val = localStorage.getItem(key);
+        if (val) data[key] = JSON.parse(val);
+    });
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '壳记账_备份_' + new Date().toISOString().split('T')[0] + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('数据已导出 ✓');
+}
+
+function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            let count = 0;
+            Object.entries(data).forEach(([key, value]) => {
+                if (Array.isArray(value)) {
+                    localStorage.setItem(key, JSON.stringify(value));
+                    cache[key] = value;
+                    pushToCloud(key, value);
+                    count++;
+                }
+            });
+            showToast(`成功导入 ${count} 项数据 ✓`);
+            refreshAll();
+        } catch (err) {
+            showToast('导入失败：文件格式不正确', true);
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+}

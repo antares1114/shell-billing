@@ -83,6 +83,15 @@
             </a>
         </nav>
         <div class="sidebar-footer">
+            <div style="display:flex;gap:6px;margin-bottom:8px;">
+                <button onclick="exportData()"
+                    style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--color-border);background:#fff;color:var(--color-text-secondary);font-size:12px;cursor:pointer;">📤
+                    导出数据</button>
+                <button onclick="document.getElementById('import-file').click()"
+                    style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--color-border);background:#fff;color:var(--color-text-secondary);font-size:12px;cursor:pointer;">📥
+                    导入数据</button>
+                <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+            </div>
             <div class="sidebar-hint">数据存储于浏览器本地</div>
         </div>
     </aside>
