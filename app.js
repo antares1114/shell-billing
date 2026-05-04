@@ -456,7 +456,6 @@ async function initApp() {
     reportYear = now.getFullYear();
     reportMonth = now.getMonth() + 1;
     bindFormListeners();
-    setupModelAutocomplete('p-model', 'p-model-list');
 
     // 绑定同步按钮
     document.getElementById('syncStatus').addEventListener('click', manualSync);
@@ -495,7 +494,7 @@ function refreshAll() {
 function switchView(view) {
     document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.view === view));
     document.querySelectorAll('.view').forEach(el => el.classList.toggle('active', el.id === 'view-' + view));
-    const titles = { dashboard: '首页概览', purchase: '📦 进货记录', supplies: '🎁 辅料采购', sales: '💰 销售记录', returns: '↩️ 退货记录', inventory: '📋 库存管理', report: '📈 月度报表', salary: '💸 发工资', costref: '📝 成本参考' };
+    const titles = { dashboard: '首页概览', purchase: '进货记录', orders: '订货转账', supplies: '辅料采购', sales: '销售记录', promotion: '推广费用', returns: '退货记录', inventory: '库存管理', report: '月度报表', salary: '发工资', costref: '成本参考' };
     document.getElementById('pageTitle').textContent = titles[view] || view;
     currentView = view;
     document.getElementById('sidebar').classList.remove('open');
@@ -558,7 +557,7 @@ function updateCostPreview() {
     const l = document.getElementById('s-logistics').value || 4;
     const p = document.getElementById('s-packaging').value || 3;
     const i = document.getElementById('s-insurance').value || 1.5;
-    document.getElementById('cost-preview').textContent = `物流${l} + 包装${p} + 运费险${i} = ${Number(l) + Number(p) + Number(i)}元/件`;
+    document.getElementById('cost-preview').textContent = `物流${l} + 包装${p} + 运费险${i} = ${Number(l) + Number(p) + Number(i)}元/单`;
 }
 
 function selectPlatform(p) {
@@ -584,24 +583,9 @@ function setInvView(mode) {
 
 // --- 表单实时计算 ---
 function bindFormListeners() {
-    const sQty = document.getElementById('s-quantity'), sPrice = document.getElementById('s-price'), sCost = document.getElementById('s-cost');
     const sL = document.getElementById('s-logistics'), sP = document.getElementById('s-packaging'), sI = document.getElementById('s-insurance');
-    function updS() {
-        const q = Number(sQty.value), sp = Number(sPrice.value), pc = Number(sCost.value);
-        const lo = Number(sL.value) || 4, pk = Number(sP.value) || 3, ins = Number(sI.value) || 1.5;
-        const commRate = Number(document.querySelector('input[name="s-commission"]:checked')?.value) || 0;
-        if (q > 0 && sp > 0 && pc > 0) {
-            const rev = sp * q, commAmount = sp * commRate * q, cost = (pc + lo + pk + ins) * q + commAmount, profit = rev - cost;
-            document.getElementById('s-profit-preview').style.display = 'block';
-            document.getElementById('sp-revenue').textContent = '+¥' + fmt(rev);
-            document.getElementById('sp-cost').textContent = '-¥' + fmt(cost);
-            document.getElementById('sp-profit').textContent = '¥' + fmt(profit);
-            document.getElementById('sp-profit').className = 'profit-big ' + (profit >= 0 ? 'success' : 'danger');
-        } else { document.getElementById('s-profit-preview').style.display = 'none'; }
-    }
-    [sQty, sPrice, sCost, sL, sP, sI].forEach(el => el.addEventListener('input', updS));
-    [sL, sP, sI].forEach(el => el.addEventListener('input', updateCostPreview));
-    document.querySelectorAll('input[name="s-commission"]').forEach(r => r.addEventListener('change', updS));
+    [sL, sP, sI].forEach(el => el.addEventListener('input', () => { updateCostPreview(); updateSaleProfitPreview(); }));
+    document.querySelectorAll('input[name="s-commission"]').forEach(r => r.addEventListener('change', updateSaleProfitPreview));
 }
 
 
@@ -662,13 +646,13 @@ function renderDashboard() {
     balEl.className = 'kpi-value ' + (balance >= 0 ? 'success' : 'danger');
 
     const recentEl = document.getElementById('recent-list');
-    const sl = getSales().slice(0, 5).map(s => ({ icon: '💰', title: `${s.platform} · ${s.design ? s.design + ' ' : ''}${s.model} ×${s.quantity}`, date: s.date, amount: '+¥' + fmt(s.totalRevenue), cls: 'success', time: s.createdAt }));
-    const pl = getPurchases().slice(0, 5).map(p => ({ icon: '📦', title: `${p.factory} · ${p.design} ${p.model} ×${p.quantity}`, date: p.date, amount: '-¥' + fmt(p.totalCost), cls: 'danger', time: p.createdAt }));
-    const rl = getReturns().slice(0, 3).map(r => ({ icon: '↩️', title: `退货 · ${r.design ? r.design + ' ' : ''}${r.model} ×${r.quantity}`, date: r.date, amount: '-¥' + fmt(r.refundAmount), cls: 'warning', time: r.createdAt }));
+    const sl = getSales().slice(0, 5).map(s => ({ icon: 'OUT', title: `${s.platform} · ${s.design ? s.design + ' ' : ''}${s.model} ×${s.quantity}`, date: s.date, amount: '+¥' + fmt(s.totalRevenue), cls: 'success', time: s.createdAt }));
+    const pl = getPurchases().slice(0, 5).map(p => ({ icon: 'IN', title: `${p.factory} · ${p.design} ${p.model} ×${p.quantity}`, date: p.date, amount: '-¥' + fmt(p.totalCost), cls: 'danger', time: p.createdAt }));
+    const rl = getReturns().slice(0, 3).map(r => ({ icon: 'RET', title: `退货 · ${r.design ? r.design + ' ' : ''}${r.model} ×${r.quantity}`, date: r.date, amount: '-¥' + fmt(r.refundAmount), cls: 'warning', time: r.createdAt }));
     const items = [...sl, ...pl, ...rl].sort((a, b) => b.time - a.time).slice(0, 8);
 
-    if (!items.length) recentEl.innerHTML = '<div class="empty-state">📝 还没有记录，快去记一笔吧～</div>';
-    else recentEl.innerHTML = items.map(i => `<div class="recent-item"><div class="recent-left"><span class="recent-icon">${i.icon}</span><div class="recent-info"><span class="recent-title">${i.title}</span><span class="recent-date">${i.date}</span></div></div><span class="recent-amount ${i.cls}">${i.amount}</span></div>`).join('');
+    if (!items.length) recentEl.innerHTML = '<div class="empty-state">No Records Found / 暂无记录</div>';
+    else recentEl.innerHTML = items.map(i => `<div class="recent-item"><div class="recent-left"><span class="recent-icon" style="font-size:12px;font-weight:700;letter-spacing:1px;background:rgba(15,23,42,0.05);padding:4px 8px;border-radius:4px;">${i.icon}</span><div class="recent-info"><span class="recent-title">${i.title}</span><span class="recent-date">${i.date}</span></div></div><span class="recent-amount ${i.cls}">${i.amount}</span></div>`).join('');
 }
 
 function changeDashMonth(delta) {
@@ -687,8 +671,31 @@ function renderPurchases() {
     const purchases = getPurchases(), factories = getFactories(), designs = getDesigns();
     const fSummary = getFactorySummary();
 
-    document.getElementById('factory-bar').innerHTML = fSummary.map(f => `<div class="factory-tag"><span class="factory-tag-name">${f.factory}</span><span class="factory-tag-amount">¥${fmt(f.totalAmount)}</span><span class="factory-tag-count">${f.orders}笔 / ${f.totalQty}件</span></div>`).join('');
+    const maxAmount = Math.max(...fSummary.map(f => f.totalAmount), 0) || 1;
+    document.getElementById('factory-bar').innerHTML = fSummary.map(f => {
+        const height = Math.max((f.totalAmount / maxAmount * 100), 1).toFixed(2) + '%';
+        return `<div style="height: 100%; min-width: 64px; display: flex; flex-direction: column; align-items: center;">
+            <div class="custom-bar-wrap">
+                <div class="custom-bar" style="height: ${height};">
+                    <div class="tooltip">工厂: ${f.factory}&#10;金额: ¥${fmt(f.totalAmount)}&#10;订单: ${f.orders}笔</div>
+                </div>
+            </div>
+            <div style="margin-top: 12px; font-size: 13px; font-weight: 700; color: var(--color-text); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px;" title="${f.factory}">${f.factory}</div>
+            <div style="margin-top: 4px; font-size: 12px; font-weight: 800; font-family: 'Inter', monospace; color: var(--color-text-muted); text-align: center;">¥${Math.round(f.totalAmount)}</div>
+        </div>`;
+    }).join('');
     document.getElementById('purchase-count').textContent = '共' + purchases.length + '条';
+
+    // 初始化批量型号行（如果为空则添加一行）
+    const modelRows = document.getElementById('p-model-rows');
+    if (modelRows && modelRows.children.length === 0) { addModelRow(); }
+
+    // 初始化补货表单
+    initRestockDesignAutocomplete();
+    const rsRows = document.getElementById('rs-model-rows');
+    if (rsRows && rsRows.children.length === 0) { addRestockModelRow(); }
+    const rsDate = document.getElementById('rs-date');
+    if (rsDate && !rsDate.value) rsDate.value = getToday();
 
     renderPurchaseList(purchases);
 }
@@ -696,27 +703,177 @@ function renderPurchases() {
 function renderPurchaseList(list) {
     list = list.slice().sort((a, b) => b.date.localeCompare(a.date));
     const el = document.getElementById('purchase-list');
-    if (!list.length) { el.innerHTML = '<div class="empty-state">📦 还没有进货记录</div>'; return; }
-    el.innerHTML = `<div class="table-wrap"><table class="ref-table"><thead><tr><th>日期</th><th>工厂</th><th>款名</th><th>型号</th><th>数量</th><th>单价</th><th>总成本</th><th></th></tr></thead><tbody>` + list.map(p => `<tr><td>${p.date}</td><td>${p.factory}</td><td>${p.design}</td><td>${p.model}</td><td>${p.quantity}件</td><td>¥${fmt(p.unitCost || 0)}</td><td class="danger">¥${fmt(p.totalCost || 0)}</td><td class="td-delete" onclick="confirmDeletePurchase('${p.id}')">✕</td></tr>`).join('') + `</tbody></table></div>`;
+    if (!list.length) { el.innerHTML = '<div class="empty-state">No Purchase Records / 暂无进货记录</div>'; return; }
+    el.innerHTML = `<div class="table-wrap"> <table class="ref-table"><thead><tr><th>日期</th><th>工厂</th><th>款名</th><th>型号</th><th>数量</th><th>单价</th><th>总成本</th><th></th></tr></thead><tbody>` + list.map(p => `<tr><td>${p.date}</td><td>${p.factory}</td><td>${p.design}</td><td>${p.model}</td><td>${p.quantity}件</td><td>¥${fmt(p.unitCost || 0)}</td><td class="danger">¥${fmt(p.totalCost || 0)}</td><td class="td-delete" onclick="confirmDeletePurchase('${p.id}')">✕</td></tr>`).join('') + `</tbody></table></div>`;
+}
+
+// --- 批量型号行管理 ---
+function addModelRow() {
+    const container = document.getElementById('p-model-rows');
+    const row = document.createElement('div');
+    row.className = 'model-row';
+    row.innerHTML = `
+            <div class="model-row-input">
+                <div class="autocomplete-wrap">
+                    <input type="text" class="form-input model-input" placeholder="输入筛选或点击选型号" autocomplete="off">
+                        <div class="autocomplete-list"></div>
+                </div>
+        </div>
+        <div class="model-row-qty">
+            <input type="number" class="form-input qty-input" placeholder="数量" min="1">
+        </div>
+        <button type="button" class="model-row-del" onclick="removeModelRow(this)" title="删除此行">✕</button>
+        `;
+    container.appendChild(row);
+    // 绑定自动补全
+    const input = row.querySelector('.model-input');
+    const list = row.querySelector('.autocomplete-list');
+    bindModelAutocomplete(input, list);
+}
+
+function removeModelRow(btn) {
+    const container = document.getElementById('p-model-rows');
+    if (container.children.length <= 1) { showToast('至少保留一行型号', true); return; }
+    btn.closest('.model-row').remove();
 }
 
 function submitPurchase() {
     const factory = document.getElementById('p-factory').value.trim();
-    const design = document.getElementById('p-design').value;
-    const model = document.getElementById('p-model').value;
-    const quantity = document.getElementById('p-quantity').value;
+    const design = document.getElementById('p-design').value.trim();
     const unitCost = document.getElementById('p-unitcost').value;
-    if (!factory || !design || !model || !quantity || !unitCost) { showToast('请填写完整信息', true); return; }
-    if (Number(quantity) <= 0) { showToast('数量必须大于0', true); return; }
+    if (!factory || !design || !unitCost) { showToast('请填写工厂、款名和单价', true); return; }
     if (Number(unitCost) <= 0) { showToast('单价必须大于0', true); return; }
-    addPurchase({ date: document.getElementById('p-date').value, factory, design, model, quantity, unitCost, note: document.getElementById('p-note').value });
-    showToast('进货记录已保存 ✓ 云端同步中');
-    ['p-factory', 'p-design', 'p-model', 'p-quantity', 'p-unitcost', 'p-note'].forEach(id => document.getElementById(id).value = '');
+
+    const rows = document.querySelectorAll('#p-model-rows .model-row');
+    const entries = [];
+    for (const row of rows) {
+        const model = row.querySelector('.model-input').value.trim();
+        const quantity = row.querySelector('.qty-input').value;
+        if (model && quantity && Number(quantity) > 0) {
+            entries.push({ model, quantity });
+        }
+    }
+
+    if (entries.length === 0) { showToast('请至少填写一个型号和数量', true); return; }
+
+    const date = document.getElementById('p-date').value;
+    const note = document.getElementById('p-note').value;
+
+    entries.forEach(e => {
+        addPurchase({ date, factory, design, model: e.model, quantity: e.quantity, unitCost, note });
+    });
+
+    showToast(`已保存 ${entries.length} 条进货记录 ✓ 云端同步中`);
+    document.getElementById('p-factory').value = '';
+    document.getElementById('p-design').value = '';
+    document.getElementById('p-unitcost').value = '';
+    document.getElementById('p-note').value = '';
+    // 重置型号行为一行
+    const container = document.getElementById('p-model-rows');
+    container.innerHTML = '';
+    addModelRow();
     toggleForm('purchase');
     refreshAll();
 }
 
 function confirmDeletePurchase(id) { showModal('确认删除', '确定要删除这条进货记录吗？', () => { deletePurchase(id); showToast('已删除'); refreshAll(); }); }
+
+// --- 补货功能 ---
+let _designMap = {}; // design -> {factory, unitCost}
+
+function getDesignList() {
+    const purchases = getPurchases();
+    _designMap = {};
+    purchases.forEach(p => {
+        // 用最新一条（list已按时间倒序）
+        if (!_designMap[p.design]) {
+            _designMap[p.design] = { factory: p.factory, unitCost: p.unitCost || 0 };
+        }
+    });
+    return Object.keys(_designMap);
+}
+
+function initRestockDesignAutocomplete() {
+    const input = document.getElementById('rs-design');
+    const list = document.getElementById('rs-design-list');
+    if (!input || !list) return;
+
+    function showDesigns(filter) {
+        const designs = getDesignList();
+        list.innerHTML = '';
+        const matches = filter ? designs.filter(d => d.toLowerCase().includes(filter.toLowerCase())) : designs;
+        matches.forEach(d => {
+            const info = _designMap[d];
+            const div = document.createElement('div');
+            div.className = 'autocomplete-item';
+            div.innerHTML = `<span>${d}</span> <span style="color:var(--color-text-muted);font-size:11px;margin-left:8px">${info.factory} · ¥${fmt(info.unitCost)}</span>`;
+            div.addEventListener('mousedown', () => {
+                input.value = d;
+                document.getElementById('rs-factory').value = info.factory;
+                document.getElementById('rs-unitcost').value = info.unitCost;
+                list.classList.remove('show');
+            });
+            list.appendChild(div);
+        });
+        if (matches.length) list.classList.add('show'); else list.classList.remove('show');
+    }
+
+    input.addEventListener('input', function () { showDesigns(this.value.trim()); });
+    input.addEventListener('focus', function () { showDesigns(this.value.trim()); });
+    input.addEventListener('blur', function () { setTimeout(() => list.classList.remove('show'), 150); });
+}
+
+function addRestockModelRow() {
+    const container = document.getElementById('rs-model-rows');
+    const row = document.createElement('div');
+    row.className = 'model-row';
+    row.innerHTML = `
+            <div class="model-row-input">
+                <div class="autocomplete-wrap">
+                    <input type="text" class="form-input model-input" placeholder="输入筛选或点击选型号" autocomplete="off">
+                        <div class="autocomplete-list"></div>
+                </div>
+        </div>
+        <div class="model-row-qty">
+            <input type="number" class="form-input qty-input" placeholder="数量" min="1">
+        </div>
+        <button type="button" class="model-row-del" onclick="removeModelRow(this)" title="删除此行">✕</button>
+        `;
+    container.appendChild(row);
+    bindModelAutocomplete(row.querySelector('.model-input'), row.querySelector('.autocomplete-list'));
+}
+
+function submitRestock() {
+    const design = document.getElementById('rs-design').value.trim();
+    const factory = document.getElementById('rs-factory').value.trim();
+    const unitCost = document.getElementById('rs-unitcost').value;
+    if (!design || !factory || !unitCost) { showToast('请选择款式', true); return; }
+    if (Number(unitCost) <= 0) { showToast('单价必须大于0', true); return; }
+
+    const rows = document.querySelectorAll('#rs-model-rows .model-row');
+    const entries = [];
+    for (const row of rows) {
+        const model = row.querySelector('.model-input').value.trim();
+        const quantity = row.querySelector('.qty-input').value;
+        if (model && quantity && Number(quantity) > 0) entries.push({ model, quantity });
+    }
+    if (entries.length === 0) { showToast('请至少填写一个型号和数量', true); return; }
+
+    const date = document.getElementById('rs-date').value;
+    const note = document.getElementById('rs-note').value;
+    entries.forEach(e => { addPurchase({ date, factory, design, model: e.model, quantity: e.quantity, unitCost, note }); });
+
+    showToast(`已补货 ${entries.length} 个型号 ✓ 云端同步中`);
+    document.getElementById('rs-design').value = '';
+    document.getElementById('rs-factory').value = '';
+    document.getElementById('rs-unitcost').value = '';
+    document.getElementById('rs-note').value = '';
+    const container = document.getElementById('rs-model-rows');
+    container.innerHTML = '';
+    addRestockModelRow();
+    toggleForm('restock');
+    refreshAll();
+}
 
 
 // ============================================
@@ -745,9 +902,9 @@ function renderOrders() {
 
 
     const el = document.getElementById('order-list');
-    if (!orders.length) { el.innerHTML = '<div class="empty-state">💳 ' + orderYear + '年还没有转账记录</div>'; return; }
+    if (!orders.length) { el.innerHTML = '<div class="empty-state">No Transfer Records / ' + orderYear + '年暂无转账记录</div>'; return; }
     orders.sort((a, b) => b.date.localeCompare(a.date));
-    el.innerHTML = `<div class="table-wrap"><table class="ref-table"><thead><tr><th>日期</th><th>工厂</th><th>商品</th><th>转账金额</th><th>备注</th><th></th></tr></thead><tbody>` + orders.map(o => `<tr><td>${o.date}</td><td>${o.factory}</td><td>${o.product || '-'}</td><td class="danger">¥${fmt(o.amount)}</td><td>${o.note || '-'}</td><td class="td-delete" onclick="confirmDeleteOrder('${o.id}')">✕</td></tr>`).join('') + `</tbody></table></div>`;
+    el.innerHTML = `<div class="table-wrap" > <table class="ref-table"><thead><tr><th>日期</th><th>工厂</th><th>商品</th><th>转账金额</th><th>备注</th><th></th></tr></thead><tbody>` + orders.map(o => `<tr><td>${o.date}</td><td>${o.factory}</td><td>${o.product || '-'}</td><td class="danger">¥${fmt(o.amount)}</td><td>${o.note || '-'}</td><td class="td-delete" onclick="confirmDeleteOrder('${o.id}')">✕</td></tr>`).join('') + `</tbody></table></div > `;
 }
 
 function changeOrderYear(delta) {
@@ -823,8 +980,8 @@ function renderSupplies() {
     function renderSuppliesList(list) {
         list = list.slice().sort((a, b) => b.date.localeCompare(a.date));
         const el = document.getElementById('supplies-list');
-        if (!list.length) { el.innerHTML = '<div class="empty-state">🎁 还没有辅料采购记录</div>'; return; }
-        el.innerHTML = `<div class="table-wrap"><table class="ref-table"><thead><tr><th>日期</th><th>分类</th><th>名称</th><th>数量</th><th>金额</th><th>备注</th><th></th></tr></thead><tbody>` + list.map(s => `<tr><td>${s.date}</td><td>${s.category}</td><td>${s.name}</td><td>${s.quantity}</td><td class="danger">¥${fmt(s.amount)}</td><td>${s.note || '-'}</td><td class="td-delete" onclick="confirmDeleteSupply('${s.id}')">✕</td></tr>`).join('') + `</tbody></table></div>`;
+        if (!list.length) { el.innerHTML = '<div class="empty-state">No Supply Records / 暂无辅料采购记录</div>'; return; }
+        el.innerHTML = `<div class="table-wrap" > <table class="ref-table"><thead><tr><th>日期</th><th>分类</th><th>名称</th><th>数量</th><th>金额</th><th>备注</th><th></th></tr></thead><tbody>` + list.map(s => `<tr><td>${s.date}</td><td>${s.category}</td><td>${s.name}</td><td>${s.quantity}</td><td class="danger">¥${fmt(s.amount)}</td><td>${s.note || '-'}</td><td class="td-delete" onclick="confirmDeleteSupply('${s.id}')">✕</td></tr>`).join('') + `</tbody></table></div > `;
     }
     renderSuppliesList(supplies);
 
@@ -873,11 +1030,11 @@ function quickCashback() {
     const supplies = getStore(KEYS.SUPPLIES);
     supplies.unshift({
         id: genId(), date: getQeDate(), category: '好评返现',
-        name: `好评返现 ${qty}笔`, quantity: qty, amount: amount, note: ''
+        name: `好评返现 ${qty} 笔`, quantity: qty, amount: amount, note: ''
     });
     setStore(KEYS.SUPPLIES, supplies);
     document.getElementById('qe-cashback-qty').value = '1';
-    showToast(`已记录好评返现 ${qty}笔 ¥${amount}`);
+    showToast(`已记录好评返现 ${qty} 笔 ¥${amount} `);
     refreshAll();
 }
 
@@ -893,7 +1050,7 @@ function quickExpress() {
     setStore(KEYS.SUPPLIES, supplies);
     document.getElementById('qe-express-amount').value = '';
     document.getElementById('qe-express-note').value = '';
-    showToast(`已记录快递费 ¥${fmt(amount)}`);
+    showToast(`已记录快递费 ¥${fmt(amount)} `);
     refreshAll();
 }
 
@@ -909,7 +1066,7 @@ function quickSample() {
     setStore(KEYS.SUPPLIES, supplies);
     document.getElementById('qe-sample-amount').value = '';
     document.getElementById('qe-sample-note').value = '';
-    showToast(`已记录打样费用 ¥${fmt(amount)}`);
+    showToast(`已记录打样费用 ¥${fmt(amount)} `);
     refreshAll();
 }
 
@@ -929,7 +1086,7 @@ function quickLife() {
     setStore(KEYS.SUPPLIES, supplies);
     document.getElementById('qe-life-amount').value = '';
     document.getElementById('qe-life-note').value = '';
-    showToast(`已记录生活消费 ¥${fmt(amount)}`);
+    showToast(`已记录生活消费 ¥${fmt(amount)} `);
     refreshAll();
 }
 
@@ -951,70 +1108,66 @@ function updateExpenseBreakdown() {
 
 
 // ============================================
-// 型号自动补全
-// ============================================
+// 固定型号列表（池子）
+const MODELS = [
+    'iPhone13', 'iPhone14', 'iPhone14p', 'iPhone14pm',
+    'iPhone15', 'iPhone15pro', 'iPhone15pm',
+    'iPhone16', 'iPhone16pro', 'iPhone16pm',
+    'iPhone17', 'iPhone17pro', 'iPhone17pm',
+    'Mate60 Pro', 'Mate60 Pro+',
+    'Mate70 Pro', 'Mate70 Pro+',
+    'Mate80', 'Mate80 Pro', 'Mate80 ProMax',
+    'Pura70 Pro', 'Pura70 Pro+',
+    'Pura80 Pro', 'Pura80 Pro+',
+    'XIAOMI15', 'XIAOMI15P'
+];
 
-const MODEL_PRESETS = {
-    'i': [
-        'iPhone 14', 'iPhone 14 Plus', 'iPhone 14 Pro', 'iPhone 14 Pro Max',
-        'iPhone 15', 'iPhone 15 Plus', 'iPhone 15 Pro', 'iPhone 15 Pro Max',
-        'iPhone 16', 'iPhone 16 Plus', 'iPhone 16 Pro', 'iPhone 16 Pro Max',
-        'iPhone 17', 'iPhone 17 Plus', 'iPhone 17 Pro', 'iPhone 17 Pro Max'
-    ],
-    'h': [
-        'HUAWEI Mate60', 'HUAWEI Mate60 Pro',
-        'HUAWEI Mate70', 'HUAWEI Mate70 Pro',
-        'HUAWEI P70', 'HUAWEI P70 Pro',
-        'HUAWEI P80', 'HUAWEI P80 Pro'
-    ],
-    'x': [
-        'XIAOMI 15 Pro'
-    ]
-};
-
-function setupModelAutocomplete(inputId, listId) {
-    const input = document.getElementById(inputId);
-    const list = document.getElementById(listId);
-    if (!input || !list) return;
-
+// 为型号输入框绑定自动补全
+function bindModelAutocomplete(input, list) {
     input.addEventListener('input', function () {
         const val = this.value.toLowerCase().trim();
         list.innerHTML = '';
         list.classList.remove('show');
-        if (!val) return;
-
-        let matches = [];
-        // 按首字母匹配预设
-        Object.keys(MODEL_PRESETS).forEach(prefix => {
-            if (val.startsWith(prefix)) {
-                const keyword = val.slice(prefix.length).toLowerCase();
-                MODEL_PRESETS[prefix].forEach(model => {
-                    if (!keyword || model.toLowerCase().includes(keyword)) {
-                        matches.push(model);
-                    }
-                });
-            }
-        });
-
+        if (!val) {
+            // 输入为空时显示全部
+            MODELS.forEach(model => {
+                const div = document.createElement('div');
+                div.className = 'autocomplete-item';
+                div.textContent = model;
+                div.addEventListener('mousedown', () => { input.value = model; list.classList.remove('show'); });
+                list.appendChild(div);
+            });
+            list.classList.add('show');
+            return;
+        }
+        const matches = MODELS.filter(m => m.toLowerCase().includes(val));
         if (matches.length === 0) return;
         matches.forEach(model => {
             const div = document.createElement('div');
             div.className = 'autocomplete-item';
             div.textContent = model;
-            div.addEventListener('click', () => {
-                input.value = model;
-                list.classList.remove('show');
-            });
+            div.addEventListener('mousedown', () => { input.value = model; list.classList.remove('show'); });
             list.appendChild(div);
         });
         list.classList.add('show');
     });
 
-    // 点击外部关闭
-    document.addEventListener('click', e => {
-        if (!input.contains(e.target) && !list.contains(e.target)) {
-            list.classList.remove('show');
-        }
+    input.addEventListener('focus', function () {
+        const val = this.value.toLowerCase().trim();
+        list.innerHTML = '';
+        const pool = val ? MODELS.filter(m => m.toLowerCase().includes(val)) : MODELS;
+        pool.forEach(model => {
+            const div = document.createElement('div');
+            div.className = 'autocomplete-item';
+            div.textContent = model;
+            div.addEventListener('mousedown', () => { input.value = model; list.classList.remove('show'); });
+            list.appendChild(div);
+        });
+        if (pool.length) list.classList.add('show');
+    });
+
+    input.addEventListener('blur', function () {
+        setTimeout(() => list.classList.remove('show'), 150);
     });
 }
 
@@ -1049,8 +1202,8 @@ function renderSalesPage() {
     const filtered = salesFilter ? getSales().filter(s => s.platform === salesFilter) : getSales();
     renderSalesList(filtered);
 
-    // 填充库存商品下拉
-    populateSaleProductDropdown();
+    // 初始化多商品行
+    initSaleProductRows();
 }
 
 function changeSalesYear(delta) {
@@ -1074,52 +1227,195 @@ function filterSales(platform) {
 function renderSalesList(list) {
     list = list.slice().sort((a, b) => b.date.localeCompare(a.date));
     const el = document.getElementById('sales-list');
-    if (!list.length) { el.innerHTML = '<div class="empty-state">💰 还没有销售记录</div>'; return; }
+    if (!list.length) { el.innerHTML = '<div class="empty-state">No Sales Records / 暂无销售记录</div>'; return; }
     const pCls = (p) => p === '淘宝' ? 'badge-orange' : p === '抖音' ? 'badge-douyin' : 'badge-xhs';
-    el.innerHTML = `<div class="table-wrap"><table class="ref-table"><thead><tr><th>日期</th><th>平台</th><th>款名</th><th>型号</th><th>数量</th><th>售价</th><th>收入</th><th>利润</th><th></th></tr></thead><tbody>` + list.map(s => `<tr><td>${s.date}</td><td><span class="badge ${pCls(s.platform)}">${s.platform}</span></td><td>${s.design || '-'}</td><td>${s.model}</td><td>${s.quantity}件</td><td>¥${s.sellingPrice}</td><td class="success">¥${fmt(s.totalRevenue)}</td><td class="${s.profit >= 0 ? 'success' : 'danger'}">¥${fmt(s.profit)}</td><td class="td-delete" onclick="confirmDeleteSale('${s.id}')">✕</td></tr>`).join('') + `</tbody></table></div>`;
+    el.innerHTML = `<div class="table-wrap" > <table class="ref-table"><thead><tr><th>日期</th><th>平台</th><th>款名</th><th>型号</th><th>数量</th><th>售价</th><th>收入</th><th>利润</th><th></th></tr></thead><tbody>` + list.map(s => `<tr><td>${s.date}</td><td><span class="badge ${pCls(s.platform)}">${s.platform}</span></td><td>${s.design || '-'}</td><td>${s.model}</td><td>${s.quantity}件</td><td>¥${s.sellingPrice}</td><td class="success">¥${fmt(s.totalRevenue)}</td><td class="${s.profit >= 0 ? 'success' : 'danger'}">¥${fmt(s.profit)}</td><td class="td-delete" onclick="confirmDeleteSale('${s.id}')">✕</td></tr>`).join('') + `</tbody></table></div > `;
 }
 // 库存商品查找表（design+model → unitCost）
 let _productMap = {};
 
-function populateSaleProductDropdown() {
+function buildProductMap() {
     const purchases = getPurchases();
     _productMap = {};
     purchases.forEach(p => {
         const k = p.design + ' - ' + p.model;
         if (!_productMap[k]) _productMap[k] = { design: p.design, model: p.model, unitCost: p.unitCost || 0 };
     });
-    const dl = document.getElementById('product-list');
-    if (!dl) return;
-    dl.innerHTML = Object.entries(_productMap)
-        .map(([label, v]) => `<option value="${label}">进货价¥${fmt(v.unitCost)}</option>`).join('');
+    return _productMap;
 }
 
-function onSaleProductSelect() {
-    const val = document.getElementById('s-product').value;
-    const item = _productMap[val];
-    if (item) {
-        document.getElementById('s-cost').value = item.unitCost;
-        updateCostPreview();
+function addSaleProductRow() {
+    buildProductMap();
+    const container = document.getElementById('s-product-rows');
+    const idx = container.children.length;
+    const row = document.createElement('div');
+    row.className = 'sale-product-row';
+    row.innerHTML = `
+            <div class="sale-product-row-header" >
+            <span class="sale-product-num">商品 ${idx + 1}</span>
+            <button type="button" class="model-row-del" onclick="removeSaleProductRow(this)" title="删除此商品">✕</button>
+        </div >
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">款名 + 型号</label>
+                <div class="autocomplete-wrap">
+                    <input type="text" class="form-input sp-product" placeholder="输入搜索已进货的款型" autocomplete="off">
+                    <div class="autocomplete-list"></div>
+                </div>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group third">
+                <label class="form-label">数量</label>
+                <input type="number" class="form-input sp-qty" value="1" min="1">
+            </div>
+            <div class="form-group third">
+                <label class="form-label">售价(元/件)</label>
+                <input type="number" class="form-input sp-price" placeholder="49.9" step="0.1">
+            </div>
+            <div class="form-group third">
+                <label class="form-label">进货价(元/件)</label>
+                <input type="number" class="form-input sp-cost" placeholder="18" step="0.1">
+            </div>
+        </div>
+        `;
+    container.appendChild(row);
+
+    // 绑定商品自动补全
+    const input = row.querySelector('.sp-product');
+    const list = row.querySelector('.autocomplete-list');
+    const costInput = row.querySelector('.sp-cost');
+    bindProductAutocomplete(input, list, costInput);
+    // 实时更新利润预览
+    [row.querySelector('.sp-qty'), row.querySelector('.sp-price'), costInput].forEach(el => {
+        el.addEventListener('input', updateSaleProfitPreview);
+    });
+}
+
+function bindProductAutocomplete(input, list, costInput) {
+    function showProducts(filter) {
+        buildProductMap();
+        list.innerHTML = '';
+        const entries = Object.entries(_productMap);
+        const matches = filter ? entries.filter(([k]) => k.toLowerCase().includes(filter.toLowerCase())) : entries;
+        matches.forEach(([label, v]) => {
+            const div = document.createElement('div');
+            div.className = 'autocomplete-item';
+            div.innerHTML = `<span > ${label}</span > <span style="color:var(--color-text-muted);font-size:11px;margin-left:8px">进货¥${fmt(v.unitCost)}</span>`;
+            div.addEventListener('mousedown', () => {
+                input.value = label;
+                costInput.value = v.unitCost;
+                list.classList.remove('show');
+                updateSaleProfitPreview();
+            });
+            list.appendChild(div);
+        });
+        if (matches.length) list.classList.add('show'); else list.classList.remove('show');
     }
+
+    input.addEventListener('input', function () { showProducts(this.value.trim()); updateSaleProfitPreview(); });
+    input.addEventListener('focus', function () { showProducts(this.value.trim()); });
+    input.addEventListener('blur', function () { setTimeout(() => list.classList.remove('show'), 150); });
+}
+
+function removeSaleProductRow(btn) {
+    const container = document.getElementById('s-product-rows');
+    if (container.children.length <= 1) { showToast('至少保留一件商品', true); return; }
+    btn.closest('.sale-product-row').remove();
+    // 更新编号
+    [...container.children].forEach((row, i) => {
+        row.querySelector('.sale-product-num').textContent = '商品 ' + (i + 1);
+    });
+    updateSaleProfitPreview();
+}
+
+function initSaleProductRows() {
+    const container = document.getElementById('s-product-rows');
+    if (container && container.children.length === 0) { addSaleProductRow(); }
+}
+
+function updateSaleProfitPreview() {
+    const previewEl = document.getElementById('s-profit-preview');
+    if (!previewEl) return;
+    const rows = document.querySelectorAll('#s-product-rows .sale-product-row');
+    let totalRev = 0, totalCost = 0;
+    let valid = false;
+    rows.forEach(row => {
+        const q = Number(row.querySelector('.sp-qty')?.value) || 0;
+        const sp = Number(row.querySelector('.sp-price')?.value) || 0;
+        const pc = Number(row.querySelector('.sp-cost')?.value) || 0;
+        if (q > 0 && sp > 0 && pc > 0) {
+            valid = true;
+            totalRev += sp * q;
+            totalCost += pc * q;
+        }
+    });
+    if (!valid) { document.getElementById('s-profit-preview').style.display = 'none'; return; }
+
+    const lo = Number(document.getElementById('s-logistics').value) || 4;
+    const pk = Number(document.getElementById('s-packaging').value) || 3;
+    const ins = Number(document.getElementById('s-insurance').value) || 1.5;
+    const commRate = Number(document.querySelector('input[name="s-commission"]:checked')?.value) || 0;
+    const commAmt = totalRev * commRate;
+    totalCost += lo + pk + ins + commAmt;
+    const profit = totalRev - totalCost;
+
+    document.getElementById('s-profit-preview').style.display = 'block';
+    document.getElementById('sp-revenue').textContent = '+¥' + fmt(totalRev);
+    document.getElementById('sp-cost').textContent = '-¥' + fmt(totalCost);
+    document.getElementById('sp-profit').textContent = '¥' + fmt(profit);
+    document.getElementById('sp-profit').className = 'profit-big ' + (profit >= 0 ? 'success' : 'danger');
 }
 
 function submitSale() {
-    const productVal = document.getElementById('s-product').value.trim();
-    const item = _productMap[productVal];
-    const design = item ? item.design : '';
-    const model = item ? item.model : productVal;
-    const quantity = document.getElementById('s-quantity').value;
-    const price = document.getElementById('s-price').value;
-    const cost = document.getElementById('s-cost').value;
-    if (!productVal || !quantity || !price || !cost) { showToast('请填写完整信息', true); return; }
+    const rows = document.querySelectorAll('#s-product-rows .sale-product-row');
+    const items = [];
+    for (const row of rows) {
+        const productVal = row.querySelector('.sp-product').value.trim();
+        const quantity = row.querySelector('.sp-qty').value;
+        const price = row.querySelector('.sp-price').value;
+        const cost = row.querySelector('.sp-cost').value;
+        if (!productVal || !quantity || !price || !cost) continue;
+        if (Number(quantity) <= 0 || Number(price) <= 0) continue;
+        const mapped = _productMap[productVal];
+        items.push({
+            design: mapped ? mapped.design : '',
+            model: mapped ? mapped.model : productVal,
+            quantity, sellingPrice: price, purchaseCost: cost
+        });
+    }
+    if (items.length === 0) { showToast('请至少填写一件商品的完整信息', true); return; }
+
+    const date = document.getElementById('s-date').value;
+    const note = document.getElementById('s-note').value;
     const commissionVal = document.querySelector('input[name="s-commission"]:checked')?.value || '0';
-    addSale({ date: document.getElementById('s-date').value, platform: currentPlatform, design, model, quantity, sellingPrice: price, purchaseCost: cost, logistics: document.getElementById('s-logistics').value || 4, packaging: document.getElementById('s-packaging').value || 3, insurance: document.getElementById('s-insurance').value || 1.5, commission: commissionVal, note: document.getElementById('s-note').value });
-    showToast('销售记录已保存 ✓ 云端同步中');
-    document.getElementById('s-product').value = '';
-    ['s-price', 's-cost', 's-note'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('s-quantity').value = '1';
+    const lo = document.getElementById('s-logistics').value || 4;
+    const pk = document.getElementById('s-packaging').value || 3;
+    const ins = document.getElementById('s-insurance').value || 1.5;
+    const orderId = genId();
+
+    items.forEach((item, i) => {
+        addSale({
+            date, platform: currentPlatform,
+            design: item.design, model: item.model,
+            quantity: item.quantity, sellingPrice: item.sellingPrice,
+            purchaseCost: item.purchaseCost,
+            logistics: i === 0 ? lo : 0,
+            packaging: i === 0 ? pk : 0,
+            insurance: i === 0 ? ins : 0,
+            commission: i === 0 ? commissionVal : 0,
+            note: items.length > 1 ? (note ? note + ` [${i + 1}/${items.length}]` : `合单[${i + 1}/${items.length}]`) : note
+        });
+    });
+
+    showToast(`已保存 ${items.length} 件商品的销售记录 ✓ 云端同步中`);
+    // 重置表单
+    document.getElementById('s-note').value = '';
     document.querySelector('input[name="s-commission"][value="0"]').checked = true;
     document.getElementById('s-profit-preview').style.display = 'none';
+    const container = document.getElementById('s-product-rows');
+    container.innerHTML = '';
+    addSaleProductRow();
     toggleForm('sales');
     refreshAll();
 }
@@ -1149,11 +1445,24 @@ function renderReturns() {
     document.getElementById('returns-year-amount').textContent = '¥' + fmt(yr.reduce((s, r) => s + (r.refundAmount || 0), 0));
     document.getElementById('returns-count').textContent = '共' + allReturns.length + '条';
 
+    // 初始化退货商品选择（必须在 early return 之前）
+    initReturnProductAutocomplete();
+
     const el = document.getElementById('returns-list');
-    if (!allReturns.length) { el.innerHTML = '<div class="empty-state">↩️ 还没有退货记录</div>'; return; }
+    if (!allReturns.length) { el.innerHTML = '<div class="empty-state">No Return Records / 暂无退货记录</div>'; return; }
     allReturns.sort((a, b) => b.date.localeCompare(a.date));
     const pCls = (p) => p === '淘宝' ? 'badge-orange' : p === '抖音' ? 'badge-douyin' : 'badge-xhs';
-    el.innerHTML = `<div class="table-wrap"><table class="ref-table"><thead><tr><th>日期</th><th>平台</th><th>款名</th><th>型号</th><th>数量</th><th>物流</th><th>运费险</th><th>损失</th><th></th></tr></thead><tbody>` + allReturns.map(r => `<tr><td>${r.date}</td><td><span class="badge ${pCls(r.platform)}">${r.platform}</span></td><td>${r.design || '-'}</td><td>${r.model}</td><td>${r.quantity}件</td><td>¥${r.logistics || 4}</td><td>¥${r.insurance || 1.5}</td><td class="danger">¥${fmt(r.refundAmount || 0)}</td><td class="td-delete" onclick="confirmDeleteReturn('${r.id}')">✕</td></tr>`).join('') + `</tbody></table></div>`;
+    el.innerHTML = `<div class="table-wrap"> <table class="ref-table"><thead><tr><th>日期</th><th>平台</th><th>款名</th><th>型号</th><th>数量</th><th>物流</th><th>运费险</th><th>损失</th><th></th></tr></thead><tbody>` + allReturns.map(r => `<tr><td>${r.date}</td><td><span class="badge ${pCls(r.platform)}">${r.platform}</span></td><td>${r.design || '-'}</td><td>${r.model}</td><td>${r.quantity}件</td><td>¥${r.logistics || 4}</td><td>¥${r.insurance || 1.5}</td><td class="danger">¥${fmt(r.refundAmount || 0)}</td><td class="td-delete" onclick="confirmDeleteReturn('${r.id}')">✕</td></tr>`).join('') + `</tbody></table></div>`;
+}
+
+function initReturnProductAutocomplete() {
+    const input = document.getElementById('r-product');
+    const list = document.getElementById('r-product-list');
+    if (!input || !list || input._acBound) return;
+    input._acBound = true;
+    // 退货不需要自动填进货价，传一个假的 costInput
+    const fakeCost = { set value(v) { }, get value() { return ''; } };
+    bindProductAutocomplete(input, list, fakeCost);
 }
 
 function changeReturnsYear(delta) {
@@ -1169,6 +1478,7 @@ function changeReturnsMonth(delta) {
 }
 
 function submitReturn() {
+    buildProductMap();
     const productVal = document.getElementById('r-product').value.trim();
     const item = _productMap[productVal];
     const design = item ? item.design : '';
@@ -1216,9 +1526,9 @@ function renderPromotion() {
     if (dateEl && !dateEl.value) dateEl.value = getToday();
 
     const el = document.getElementById('promo-list');
-    if (!allPromos.length) { el.innerHTML = '<div class="empty-state">📣 还没有推广记录</div>'; return; }
+    if (!allPromos.length) { el.innerHTML = '<div class="empty-state">No Promotion Records / 暂无推广记录</div>'; return; }
     allPromos.sort((a, b) => b.date.localeCompare(a.date));
-    el.innerHTML = `<div class="table-wrap"><table class="ref-table"><thead><tr><th>日期</th><th>类型</th><th>金额</th><th>备注</th><th></th></tr></thead><tbody>` + allPromos.map(p => `<tr><td>${p.date}</td><td><span class="badge ${p.type === '博主推广' ? 'badge-purple' : 'badge-orange'}">${p.type}</span></td><td class="danger">¥${fmt(p.amount)}</td><td>${p.note || '-'}</td><td class="td-delete" onclick="confirmDeletePromo('${p.id}')">✕</td></tr>`).join('') + `</tbody></table></div>`;
+    el.innerHTML = `<div class="table-wrap"> <table class="ref-table"><thead><tr><th>日期</th><th>类型</th><th>金额</th><th>备注</th><th></th></tr></thead><tbody>` + allPromos.map(p => `<tr><td>${p.date}</td><td><span class="badge ${p.type === '博主推广' ? 'badge-purple' : 'badge-orange'}">${p.type}</span></td><td class="danger">¥${fmt(p.amount)}</td><td>${p.note || '-'}</td><td class="td-delete" onclick="confirmDeletePromo('${p.id}')">✕</td></tr>`).join('') + `</tbody></table></div>`;
 }
 
 function changePromoYear(delta) {
@@ -1285,16 +1595,20 @@ function renderInventory() {
     document.getElementById('inv-model-count').textContent = designSet.size + '款/' + inventory.length + '号';
 
     const el = document.getElementById('inventory-list');
-    if (!filtered.length) { el.innerHTML = '<div class="empty-state">📋 ' + (search ? '没有找到匹配的款名或型号' : '暂无库存数据') + '</div>'; return; }
+    if (!filtered.length) { el.innerHTML = '<div class="empty-state">No Inventory Data / ' + (search ? '没有找到匹配的款名或型号' : '暂无库存数据') + '</div>'; return; }
 
     if (invViewMode === 'design') {
         const groups = {};
         filtered.forEach(item => { const d = item.design || '未分类'; if (!groups[d]) groups[d] = []; groups[d].push(item); });
-        el.innerHTML = Object.entries(groups).map(([design, items]) => {
+        el.innerHTML = Object.entries(groups).sort((a, b) => {
+            const va = a[1].reduce((s, i) => s + i.stockValue, 0);
+            const vb = b[1].reduce((s, i) => s + i.stockValue, 0);
+            return vb - va;
+        }).map(([design, items]) => {
             const gs = items.reduce((s, i) => s + i.stock, 0), gv = items.reduce((s, i) => s + i.stockValue, 0);
             const gp = items.reduce((s, i) => s + i.totalPurchased, 0), gsold = items.reduce((s, i) => s + i.totalSold, 0);
             const pct = gp > 0 ? Math.round(gsold / gp * 100) : 0;
-            return `<div class="design-group"><div class="design-header" onclick="this.parentElement.classList.toggle('collapsed')"><div class="design-header-left"><span class="design-arrow">▼</span><span class="design-name">${design}</span><span class="badge badge-purple">${items.length}个型号</span></div><div class="design-header-right"><span class="design-stat">库存 ${gs}件</span><span class="design-stat danger">¥${fmt(gv)}</span><span class="design-pct">${pct}%已售</span></div></div><div class="design-body">${items.map(item => renderInvItem(item)).join('')}</div></div>`;
+            return `<div class="design-group collapsed"><div class="design-header" onclick="this.parentElement.classList.toggle('collapsed')"><div class="design-header-left"><span class="design-arrow">▼</span><span class="design-name">${design}</span><span class="badge badge-purple">${items.length}个型号</span></div><div class="design-header-right"><span class="design-stat">库存 ${gs}件</span><span class="design-stat danger">¥${fmt(gv)}</span><span class="design-pct">${pct}%已售</span></div></div><div class="design-body">${items.map(item => renderInvItem(item)).join('')}</div></div>`;
         }).join('');
     } else {
         el.innerHTML = filtered.map(item => renderInvItem(item)).join('');
@@ -1303,7 +1617,7 @@ function renderInventory() {
 
 function renderInvItem(item) {
     const pct = item.totalPurchased > 0 ? Math.round(item.totalSold / item.totalPurchased * 100) : 0;
-    return `<div class="inv-item"><div class="inv-header">${item.design ? `<span class="badge badge-purple" style="margin-right:6px">${item.design}</span>` : ''}<span class="inv-model">${item.model}</span><span class="inv-badge ${item.stock > 0 ? 'has-stock' : 'no-stock'}">${item.stock > 0 ? '库存' + item.stock + '件' : '已清零'}</span></div>${item.totalPurchased > 0 ? `<div class="progress"><div class="progress-fill" style="width:${pct}%"></div></div><div class="progress-labels"><span>已售 ${item.totalSold}/${item.totalPurchased}</span><span class="progress-pct">${pct}%</span></div>` : ''}<div class="inv-details"><div class="inv-detail"><span class="inv-detail-label">进货总量</span><span class="inv-detail-value">${item.totalPurchased}件</span></div><div class="inv-detail"><span class="inv-detail-label">已售出</span><span class="inv-detail-value success">${item.totalSold}件</span></div>${item.totalReturned > 0 ? `<div class="inv-detail"><span class="inv-detail-label">退货回库</span><span class="inv-detail-value warning">${item.totalReturned}件</span></div>` : ''}<div class="inv-detail"><span class="inv-detail-label">进货均价</span><span class="inv-detail-value">¥${item.avgCost}</span></div>${item.stock > 0 ? `<div class="inv-detail"><span class="inv-detail-label">积压成本</span><span class="inv-detail-value danger">¥${fmt(item.stockValue)}</span></div>` : ''}</div></div>`;
+    return `<div class="inv-item"> <div class="inv-header">${item.design ? `<span class="badge badge-purple" style="margin-right:6px">${item.design}</span>` : ''}<span class="inv-model">${item.model}</span><span class="inv-badge ${item.stock > 0 ? 'has-stock' : 'no-stock'}">${item.stock > 0 ? '库存' + item.stock + '件' : '已清零'}</span></div>${item.totalPurchased > 0 ? `<div class="progress"><div class="progress-fill" style="width:${pct}%"></div></div><div class="progress-labels"><span>已售 ${item.totalSold}/${item.totalPurchased}</span><span class="progress-pct">${pct}%</span></div>` : ''} <div class="inv-details"><div class="inv-detail"><span class="inv-detail-label">进货总量</span><span class="inv-detail-value">${item.totalPurchased}件</span></div><div class="inv-detail"><span class="inv-detail-label">已售出</span><span class="inv-detail-value success">${item.totalSold}件</span></div>${item.totalReturned > 0 ? `<div class="inv-detail"><span class="inv-detail-label">退货回库</span><span class="inv-detail-value warning">${item.totalReturned}件</span></div>` : ''}<div class="inv-detail"><span class="inv-detail-label">进货均价</span><span class="inv-detail-value">¥${item.avgCost}</span></div>${item.stock > 0 ? `<div class="inv-detail"><span class="inv-detail-label">积压成本</span><span class="inv-detail-value danger">¥${fmt(item.stockValue)}</span></div>` : ''}</div></div>`;
 }
 
 
@@ -1346,7 +1660,7 @@ function renderReport() {
     const fsEl = document.getElementById('factory-summary');
     const fs = getFactorySummary(reportYear);
     if (!fs.length) fsEl.innerHTML = '<div class="empty-state-sm">暂无数据</div>';
-    else { const total = fs.reduce((s, f) => s + f.totalAmount, 0); fsEl.innerHTML = fs.map(f => `<div class="factory-row"><div class="factory-info"><span class="factory-name">${f.factory}</span><span class="factory-meta">${f.orders}笔 · ${f.totalQty}件</span></div><span class="factory-amount danger">¥${fmt(f.totalAmount)}</span></div>`).join('') + `<div class="factory-total"><span class="factory-total-label">全年总计</span><span class="factory-total-value danger">¥${fmt(total)}</span></div>`; }
+    else { const total = fs.reduce((s, f) => s + f.totalAmount, 0); fsEl.innerHTML = fs.map(f => `<div class="factory-row"><div class="factory-info"><span class="factory-name">${f.factory}</span><span class="factory-meta">${f.orders}笔 · ${f.totalQty}件</span></div><span class="factory-amount danger">¥${fmt(f.totalAmount)}</span></div>`).join('') + ` <div class="factory-total"><span class="factory-total-label">全年总计</span><span class="factory-total-value danger">¥${fmt(total)}</span></div>`; }
 
     renderTrendChart();
 
@@ -1416,8 +1730,8 @@ function renderTrendChart() {
     document.getElementById('trend-chart').innerHTML = trend.map(t => {
         const rh = Math.max(4, Math.round((t.revenue / maxVal) * 120));
         const ph = Math.max(4, Math.round((Math.abs(t.profit) / maxVal) * 120));
-        const rLabel = t.revenue > 0 ? `¥${fmt(t.revenue)}` : '';
-        const pLabel = t.profit !== 0 ? `¥${fmt(t.profit)}` : '';
+        const rLabel = t.revenue > 0 ? `¥${fmt(t.revenue)} ` : '';
+        const pLabel = t.profit !== 0 ? `¥${fmt(t.profit)} ` : '';
         return `<div class="chart-group"><div class="chart-bar-pair"><div class="chart-bar-wrap"><span class="bar-value">${rLabel}</span><div class="chart-bar revenue" style="height:${rh}px"></div></div><div class="chart-bar-wrap"><span class="bar-value">${pLabel}</span><div class="chart-bar profit" style="height:${ph}px"></div></div></div><span class="chart-label">${t.label}</span></div>`;
     }).join('');
 }

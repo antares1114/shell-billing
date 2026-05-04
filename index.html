@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>壳记账 — 手机壳店铺记账系统</title>
+    <title>小满与万全 Shoremoon — 手机壳记账系统</title>
     <meta name="description" content="手机壳店铺进销存记账工具，追踪进货、销售、库存和利润">
     <link rel="stylesheet" href="style.css">
     <link
@@ -29,56 +29,45 @@
 
     <!-- ========== 侧边栏 ========== -->
     <aside class="sidebar" id="sidebar" style="display:none">
-        <div class="sidebar-header">
-            <div class="logo">
-                <span class="logo-icon">📱</span>
-                <span class="logo-text">壳记账</span>
-            </div>
-            <button class="sidebar-close" id="sidebarClose">✕</button>
+        <div class="sidebar-header"
+            style="align-items: flex-start; flex-direction: column; gap: 4px; padding: 24px 24px;">
+            <div class="logo-text" style="font-size: 18px; letter-spacing: 0; line-height: 1.2;">小满与万全<span
+                    style="font-size:14px; opacity: 0.9; margin-left:4px">Shoremoon</span></div>
+            <div style="font-size: 11px; color: var(--color-text-muted); letter-spacing: 1px;">手机壳记账系统</div>
+            <button class="sidebar-close" id="sidebarClose"></button>
         </div>
         <nav class="nav-menu">
             <a class="nav-item active" data-view="dashboard" onclick="switchView('dashboard')">
-                <span class="nav-icon">📊</span>
                 <span class="nav-label">首页概览</span>
             </a>
             <a class="nav-item" data-view="purchase" onclick="switchView('purchase')">
-                <span class="nav-icon">📦</span>
                 <span class="nav-label">进货记录</span>
             </a>
             <a class="nav-item" data-view="orders" onclick="switchView('orders')">
-                <span class="nav-icon">💳</span>
                 <span class="nav-label">订货转账</span>
             </a>
             <a class="nav-item" data-view="supplies" onclick="switchView('supplies')">
-                <span class="nav-icon">🎁</span>
                 <span class="nav-label">辅料采购</span>
             </a>
             <a class="nav-item" data-view="sales" onclick="switchView('sales')">
-                <span class="nav-icon">💰</span>
                 <span class="nav-label">销售记录</span>
             </a>
             <a class="nav-item" data-view="promotion" onclick="switchView('promotion')">
-                <span class="nav-icon">📣</span>
                 <span class="nav-label">推广费用</span>
             </a>
             <a class="nav-item" data-view="returns" onclick="switchView('returns')">
-                <span class="nav-icon">↩️</span>
                 <span class="nav-label">退货记录</span>
             </a>
             <a class="nav-item" data-view="inventory" onclick="switchView('inventory')">
-                <span class="nav-icon">📋</span>
                 <span class="nav-label">库存管理</span>
             </a>
             <a class="nav-item" data-view="salary" onclick="switchView('salary')">
-                <span class="nav-icon">💸</span>
                 <span class="nav-label">发工资</span>
             </a>
             <a class="nav-item" data-view="costref" onclick="switchView('costref')">
-                <span class="nav-icon">📝</span>
                 <span class="nav-label">成本参考</span>
             </a>
             <a class="nav-item" data-view="report" onclick="switchView('report')">
-                <span class="nav-icon">📈</span>
                 <span class="nav-label">月度报表</span>
             </a>
         </nav>
@@ -107,37 +96,47 @@
                 <button class="month-arrow" onclick="changeDashMonth(1)">▶</button>
             </div>
             <div class="kpi-grid">
-                <div class="kpi-card kpi-revenue">
-                    <div class="kpi-label" id="kpi-revenue-label">3月销售额</div>
+                <div class="kpi-card">
+                    <div class="kpi-header">
+                        <span class="kpi-title">REVENUE / <span id="kpi-revenue-label">3月销售额</span></span>
+                    </div>
                     <div class="kpi-value" id="kpi-revenue">¥0.00</div>
                     <div class="kpi-sub" id="kpi-sold-qty">0 件已售</div>
                 </div>
-                <div class="kpi-card kpi-profit">
-                    <div class="kpi-label" id="kpi-profit-label">3月利润</div>
+                <div class="kpi-card kpi-profit-card">
+                    <div class="kpi-header">
+                        <span class="kpi-title">PROFIT / <span id="kpi-profit-label">3月利润</span></span>
+                    </div>
                     <div class="kpi-value" id="kpi-profit">¥0.00</div>
                     <div class="kpi-sub" id="kpi-profit-rate">利润率 0%</div>
                 </div>
-                <div class="kpi-card kpi-purchase">
-                    <div class="kpi-label" id="kpi-purchase-label">3月进货额</div>
+                <div class="kpi-card kpi-balance-card">
+                    <div class="kpi-header">
+                        <span class="kpi-title">BALANCE / <span>可分配余额</span></span>
+                    </div>
+                    <div class="kpi-value success" id="kpi-balance">¥0.00</div>
+                    <div class="kpi-sub" id="kpi-balance-sub">累计利润 - 已发工资</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-header">
+                        <span class="kpi-title">PURCHASES / <span id="kpi-purchase-label">3月进货额</span></span>
+                    </div>
                     <div class="kpi-value" id="kpi-purchase">¥0.00</div>
                     <div class="kpi-sub" id="kpi-purchase-qty">0 笔</div>
                 </div>
-                <div class="kpi-card kpi-split">
-                    <div class="kpi-label" id="kpi-supplies-label">3月辅料支出</div>
+                <div class="kpi-card">
+                    <div class="kpi-header">
+                        <span class="kpi-title">SUPPLIES / <span id="kpi-supplies-label">3月辅料支出</span></span>
+                    </div>
                     <div class="kpi-value" id="kpi-supplies">¥0.00</div>
                     <div class="kpi-sub" id="kpi-supplies-qty">0 笔</div>
-                </div>
-                <div class="kpi-card" style="background:linear-gradient(135deg,#e8f5e9,#c8e6c9)">
-                    <div class="kpi-label">可分配余额</div>
-                    <div class="kpi-value success" id="kpi-balance">¥0.00</div>
-                    <div class="kpi-sub" id="kpi-balance-sub">累计利润 - 已发工资</div>
                 </div>
             </div>
 
             <div class="row-2col">
                 <div class="card">
                     <div class="card-header">
-                        <h3 class="card-title">📦 库存概况</h3>
+                        <h3 class="card-title" style="letter-spacing:1px;font-weight:700">INVENTORY / 库存概况</h3>
                     </div>
                     <div class="stock-summary">
                         <div class="stock-stat">
@@ -158,18 +157,18 @@
                 </div>
                 <div class="card">
                     <div class="card-header">
-                        <h3 class="card-title">⚡ 快捷操作</h3>
+                        <h3 class="card-title" style="letter-spacing:1px;font-weight:700">QUICK ACTIONS / 快捷操作</h3>
                     </div>
                     <div class="quick-btns">
                         <button class="quick-btn purchase-btn"
                             onclick="switchView('purchase');setTimeout(()=>toggleForm('purchase'),100)">
-                            <span class="quick-icon">📦</span>
-                            <span>记录进货</span>
+                            <span style="font-weight:700;letter-spacing:1px;font-size:12px;opacity:0.8">PURCHASE</span>
+                            <span style="margin-top:2px;font-weight:600">记录进货</span>
                         </button>
                         <button class="quick-btn sales-btn"
                             onclick="switchView('sales');setTimeout(()=>toggleForm('sales'),100)">
-                            <span class="quick-icon">💰</span>
-                            <span>记录销售</span>
+                            <span style="font-weight:700;letter-spacing:1px;font-size:12px;opacity:0.8">SALE</span>
+                            <span style="margin-top:2px;font-weight:600">记录销售</span>
                         </button>
                     </div>
                 </div>
@@ -177,21 +176,28 @@
 
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">🕐 最近动态</h3>
+                    <h3 class="card-title" style="letter-spacing:1px;font-weight:700">RECENT ACTIVITY / 最近动态</h3>
                 </div>
                 <div id="recent-list" class="recent-list">
-                    <div class="empty-state">📝 还没有记录，快去记一笔吧～</div>
+                    <div class="empty-state">No Records Found / 暂无记录</div>
                 </div>
             </div>
         </section>
 
         <!-- ===== 进货记录 ===== -->
         <section class="view" id="view-purchase">
-            <div class="factory-bar" id="factory-bar"></div>
+            <div class="card" style="margin-bottom: 24px; padding-bottom: 12px;">
+                <h3 class="card-title" style="letter-spacing:1px;font-weight:700;color:var(--color-text-muted)">FACTORY
+                    OVERVIEW / 工厂概览</h3>
+                <div id="factory-bar"
+                    style="height: 340px; display: flex; align-items: flex-end; gap: 44px; padding: 120px 20px 20px 20px; overflow-x: auto; overflow-y: visible; border-bottom: 1px solid var(--color-border); margin-bottom: 16px;">
+                </div>
+            </div>
 
             <div class="card form-card">
                 <div class="form-toggle" id="purchase-form-toggle" onclick="toggleForm('purchase')">
-                    <span>➕ 新增进货记录</span>
+                    <span style="font-weight: 700; letter-spacing: 1px; color:var(--color-primary);">ADD PURCHASE /
+                        新增进货</span>
                     <span class="toggle-arrow" id="purchase-arrow">▼</span>
                 </div>
                 <div class="form-body" id="purchase-form" style="display:none">
@@ -211,30 +217,86 @@
                             <label class="form-label">款名（设计款名称）</label>
                             <input type="text" class="form-input" id="p-design" placeholder="如：浪漫花纹、星空系列">
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">手机壳型号</label>
-                            <div class="autocomplete-wrap">
-                                <input type="text" class="form-input" id="p-model" placeholder="输入i/h/x快速选型号"
-                                    autocomplete="off">
-                                <div class="autocomplete-list" id="p-model-list"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-row">
                         <div class="form-group half">
-                            <label class="form-label">数量</label>
-                            <input type="number" class="form-input" id="p-quantity" placeholder="0" min="1">
-                        </div>
-                        <div class="form-group half">
-                            <label class="form-label">单价（元）</label>
+                            <label class="form-label">单价（元/件）</label>
                             <input type="number" class="form-input" id="p-unitcost" placeholder="0" min="0" step="0.1">
                         </div>
                     </div>
+
+                    <!-- 批量型号录入区域 -->
+                    <div class="batch-model-section">
+                        <div class="batch-model-header">
+                            <label class="form-label"
+                                style="margin:0; font-weight:700; color:var(--color-primary)">MODEL & QUANTITY /
+                                型号与数量</label>
+                        </div>
+                        <div id="p-model-rows">
+                            <!-- 默认一行，由 JS 初始化 -->
+                        </div>
+                        <button type="button" class="add-model-btn" onclick="addModelRow()">＋ ADD MODEL / 添加型号</button>
+                    </div>
+
                     <div class="form-group">
                         <label class="form-label">备注（选填）</label>
                         <input type="text" class="form-input" id="p-note" placeholder="可填写备注信息">
                     </div>
-                    <button class="btn-primary" onclick="submitPurchase()">💾 保存进货记录</button>
+                    <button class="btn-primary" onclick="submitPurchase()">SAVE PURCHASE / 保存进货单</button>
+                </div>
+            </div>
+
+            <!-- 补货表单 -->
+            <div class="card form-card">
+                <div class="form-toggle" id="restock-form-toggle" onclick="toggleForm('restock')"
+                    style="background:rgba(16,185,129,0.08)">
+                    <span style="color:var(--color-primary); font-weight: 700; letter-spacing: 1px;">RESTOCK / 补货</span>
+                    <span class="toggle-arrow" id="restock-arrow">▼</span>
+                </div>
+                <div class="form-body" id="restock-form" style="display:none">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">日期</label>
+                            <input type="date" class="form-input" id="rs-date">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">选择款式</label>
+                            <div class="autocomplete-wrap">
+                                <input type="text" class="form-input" id="rs-design" placeholder="输入筛选或点击选择已有款式"
+                                    autocomplete="off">
+                                <div class="autocomplete-list" id="rs-design-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">工厂名称 <span
+                                    style="color:var(--color-text-muted);font-size:11px">（自动填充）</span></label>
+                            <input type="text" class="form-input" id="rs-factory" readonly
+                                style="background:rgba(16,185,129,0.06)">
+                        </div>
+                        <div class="form-group half">
+                            <label class="form-label">单价 <span
+                                    style="color:var(--color-text-muted);font-size:11px">（自动填充，可修改）</span></label>
+                            <input type="number" class="form-input" id="rs-unitcost" placeholder="0" min="0" step="0.1">
+                        </div>
+                    </div>
+
+                    <div class="batch-model-section">
+                        <div class="batch-model-header">
+                            <label class="form-label"
+                                style="margin:0; font-weight:700; color:var(--color-primary);">RESTOCK MODEL & QTY /
+                                补货型号</label>
+                        </div>
+                        <div id="rs-model-rows"></div>
+                        <button type="button" class="add-model-btn" onclick="addRestockModelRow()">＋ ADD MODEL /
+                            添加型号</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">备注（选填）</label>
+                        <input type="text" class="form-input" id="rs-note" placeholder="如：第二批补货">
+                    </div>
+                    <button class="btn-primary" onclick="submitRestock()" style="background:var(--gradient-green)">SAVE
+                        RESTOCK / 保存补货单</button>
                 </div>
             </div>
 
@@ -244,7 +306,7 @@
                     <span class="badge badge-blue" id="purchase-count">共0条</span>
                 </div>
                 <div id="purchase-list" class="item-list">
-                    <div class="empty-state">📦 还没有进货记录</div>
+                    <div class="empty-state">No Purchase Records / 暂无进货记录</div>
                 </div>
             </div>
         </section>
@@ -274,7 +336,8 @@
 
             <div class="card form-card">
                 <div class="form-toggle" id="order-form-toggle" onclick="toggleForm('order')">
-                    <span>➕ 新增转账记录</span>
+                    <span style="font-weight: 700; letter-spacing: 1px; color:var(--color-primary);">ADD TRANSFER /
+                        新增转账</span>
                     <span class="toggle-arrow" id="order-arrow">▼</span>
                 </div>
                 <div class="form-body" id="order-form" style="display:none">
@@ -303,7 +366,7 @@
                         <label class="form-label">备注（选填）</label>
                         <input type="text" class="form-input" id="ord-note" placeholder="如：100个iPhone16+50个Mate70">
                     </div>
-                    <button class="btn-primary" onclick="submitOrder()">💾 保存转账记录</button>
+                    <button class="btn-primary" onclick="submitOrder()">SAVE TRANSFER / 保存转账记录</button>
                 </div>
             </div>
 
@@ -313,7 +376,7 @@
                     <span class="badge badge-blue" id="order-count">共0条</span>
                 </div>
                 <div id="order-list" class="item-list">
-                    <div class="empty-state">💳 还没有转账记录</div>
+                    <div class="empty-state">No Transfer Records / 暂无转账记录</div>
                 </div>
             </div>
         </section>
@@ -342,25 +405,25 @@
             </div>
 
             <div class="expense-breakdown" id="expense-breakdown">
-                <span class="eb-item">🎁 好评返现 <b id="eb-cashback">¥0</b></span>
-                <span class="eb-item">🚚 快递费 <b id="eb-express">¥0</b></span>
-                <span class="eb-item">🎨 打样 <b id="eb-sample">¥0</b></span>
-                <span class="eb-item">☕ 生活 <b id="eb-life">¥0</b></span>
+                <span class="eb-item">好评返现 <b id="eb-cashback">¥0</b></span>
+                <span class="eb-item">快递费 <b id="eb-express">¥0</b></span>
+                <span class="eb-item">打样 <b id="eb-sample">¥0</b></span>
+                <span class="eb-item">生活消费 <b id="eb-life">¥0</b></span>
             </div>
 
             <!-- 快速录入 -->
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">⚡ 快速记一笔</h3>
+                    <h3 class="card-title" style="letter-spacing:1px;font-weight:700">QUICK ENTRY / 快速记一笔</h3>
                 </div>
                 <div class="quick-date-row">
-                    <label class="form-label" style="margin:0;font-size:13px">📅 记录日期</label>
+                    <label class="form-label" style="margin:0;font-size:13px;font-weight:600">DATE / 记录日期</label>
                     <input type="date" class="form-input" id="qe-date" style="max-width:180px">
                 </div>
                 <div class="quick-expense-grid">
                     <!-- 好评返现 -->
                     <div class="quick-expense-card">
-                        <div class="quick-expense-title">🎁 好评返现</div>
+                        <div class="quick-expense-title" style="font-weight:600">好评返现</div>
                         <div class="quick-expense-desc">固定2元/笔</div>
                         <div class="quick-expense-row">
                             <input type="number" class="form-input quick-input" id="qe-cashback-qty" placeholder="笔数"
@@ -370,7 +433,7 @@
                     </div>
                     <!-- 快递费 -->
                     <div class="quick-expense-card">
-                        <div class="quick-expense-title">🚚 快递费</div>
+                        <div class="quick-expense-title" style="font-weight:600">快递费</div>
                         <div class="quick-expense-desc">冲单/来货运费</div>
                         <div class="quick-expense-row">
                             <input type="number" class="form-input quick-input" id="qe-express-amount" placeholder="金额"
@@ -382,7 +445,7 @@
                     </div>
                     <!-- 打样费用 -->
                     <div class="quick-expense-card">
-                        <div class="quick-expense-title">🎨 打样费用</div>
+                        <div class="quick-expense-title" style="font-weight:600">打样费用</div>
                         <div class="quick-expense-desc">新款打样支出</div>
                         <div class="quick-expense-row">
                             <input type="number" class="form-input quick-input" id="qe-sample-amount" placeholder="金额"
@@ -394,7 +457,7 @@
                     </div>
                     <!-- 生活消费 -->
                     <div class="quick-expense-card">
-                        <div class="quick-expense-title">☕ 生活消费</div>
+                        <div class="quick-expense-title" style="font-weight:600">生活消费</div>
                         <div class="quick-expense-desc">拍照/聚餐/公款</div>
                         <div class="quick-expense-row">
                             <input type="number" class="form-input quick-input" id="qe-life-amount" placeholder="金额"
@@ -407,7 +470,8 @@
             </div>
             <div class="card form-card">
                 <div class="form-toggle" id="supplies-form-toggle" onclick="toggleForm('supplies')">
-                    <span>➕ 新增辅料采购</span>
+                    <span style="font-weight: 700; letter-spacing: 1px; color:var(--color-primary);">ADD SUPPLY /
+                        新增辅料采购</span>
                     <span class="toggle-arrow" id="supplies-arrow">▼</span>
                 </div>
                 <div class="form-body" id="supplies-form" style="display:none">
@@ -439,7 +503,7 @@
                         <label class="form-label">备注（选填）</label>
                         <input type="text" class="form-input" id="sup-note" placeholder="可填写备注">
                     </div>
-                    <button class="btn-primary" onclick="submitSupply()">💾 保存辅料记录</button>
+                    <button class="btn-primary" onclick="submitSupply()">SAVE SUPPLY / 保存辅料记录</button>
                 </div>
             </div>
 
@@ -449,7 +513,7 @@
                     <span class="badge badge-purple" id="supplies-count">共0条</span>
                 </div>
                 <div id="supplies-list" class="item-list">
-                    <div class="empty-state">🎁 还没有辅料采购记录</div>
+                    <div class="empty-state">No Supply Records / 暂无辅料采购记录</div>
                 </div>
             </div>
         </section>
@@ -493,7 +557,8 @@
 
             <div class="card form-card">
                 <div class="form-toggle" id="sales-form-toggle" onclick="toggleForm('sales')">
-                    <span>➕ 新增销售记录</span>
+                    <span style="font-weight: 700; letter-spacing: 1px; color:var(--color-primary);">ADD SALE /
+                        新增销售</span>
                     <span class="toggle-arrow" id="sales-arrow">▼</span>
                 </div>
                 <div class="form-body" id="sales-form" style="display:none">
@@ -514,37 +579,26 @@
                             </div>
                         </div>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">款名 + 型号（输入搜索或下拉选择）</label>
-                            <input type="text" class="form-input" id="s-product" list="product-list"
-                                placeholder="输入搜索已进货的款型" autocomplete="off" onfocus="populateSaleProductDropdown()"
-                                onchange="onSaleProductSelect()">
-                            <datalist id="product-list"></datalist>
+
+                    <div class="batch-model-section">
+                        <div class="batch-model-header">
+                            <label class="form-label"
+                                style="margin:0; font-weight:700; color:var(--color-primary);">SALE ITEMS / 商品明细</label>
                         </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group half">
-                            <label class="form-label">数量</label>
-                            <input type="number" class="form-input" id="s-quantity" value="1" min="1">
+                        <div id="s-product-rows">
+                            <!-- 由 JS 初始化 -->
                         </div>
-                        <div class="form-group half">
-                            <label class="form-label">售价（元/件）</label>
-                            <input type="number" class="form-input" id="s-price" placeholder="如49.9" step="0.1">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">该型号进货价（元/件）</label>
-                        <input type="number" class="form-input" id="s-cost" placeholder="如18" step="0.1">
+                        <button type="button" class="add-model-btn" onclick="addSaleProductRow()">＋ ADD ITEM /
+                            添加商品</button>
                     </div>
 
                     <div class="cost-section">
                         <div class="cost-header" onclick="toggleCostDetail()">
-                            <span class="form-label" style="margin:0">附加成本</span>
+                            <span class="form-label" style="margin:0; font-weight:700;">ADDITIONAL COSTS / 附加成本</span>
                             <span class="cost-toggle" id="cost-toggle-text">调整 ▼</span>
                         </div>
                         <div class="cost-preview" id="cost-preview">
-                            物流4 + 包装3 + 运费险1.5 = 8.5元/件
+                            物流4 + 包装3 + 运费险1.5 = 8.5元/单
                         </div>
                         <div class="cost-detail" id="cost-detail" style="display:none">
                             <div class="form-row">
@@ -581,16 +635,16 @@
 
                     <div class="profit-preview" id="s-profit-preview" style="display:none">
                         <div class="preview-row">
-                            <span>💰 总收入</span>
+                            <span>TOTAL REVENUE / 总收入</span>
                             <span class="success" id="sp-revenue">+¥0</span>
                         </div>
                         <div class="preview-row">
-                            <span>📦 总成本</span>
+                            <span>TOTAL COST / 总成本</span>
                             <span class="danger" id="sp-cost">-¥0</span>
                         </div>
                         <div class="preview-divider"></div>
                         <div class="preview-row preview-total">
-                            <span>✨ 利润</span>
+                            <span style="font-weight:700;">PROFIT / 利润</span>
                             <span class="profit-big" id="sp-profit">¥0</span>
                         </div>
                     </div>
@@ -599,7 +653,7 @@
                         <label class="form-label">备注（选填）</label>
                         <input type="text" class="form-input" id="s-note" placeholder="如：客户二次回购">
                     </div>
-                    <button class="btn-primary" onclick="submitSale()">💾 保存销售记录</button>
+                    <button class="btn-primary" onclick="submitSale()">SAVE SALE / 保存销售单</button>
                 </div>
             </div>
 
@@ -615,7 +669,7 @@
                     <button class="filter-chip douyin-chip" onclick="filterSales('抖音')">抖音</button>
                 </div>
                 <div id="sales-list" class="item-list">
-                    <div class="empty-state">💰 还没有销售记录</div>
+                    <div class="empty-state">No Sales Records / 暂无销售记录</div>
                 </div>
             </div>
         </section>
@@ -644,7 +698,8 @@
 
             <div class="card form-card">
                 <div class="form-toggle" id="promo-form-toggle" onclick="toggleForm('promo')">
-                    <span>➕ 新增推广记录</span>
+                    <span style="font-weight: 700; letter-spacing: 1px; color:var(--color-primary);">ADD PROMOTION /
+                        新增推广</span>
                     <span class="toggle-arrow" id="promo-arrow">▼</span>
                 </div>
                 <div class="form-body" id="promo-form" style="display:none">
@@ -670,7 +725,7 @@
                         <label class="form-label">备注</label>
                         <input type="text" class="form-input" id="promo-note" placeholder="如：小红书博主@xxx 推广3条笔记">
                     </div>
-                    <button class="btn-primary" onclick="submitPromotion()">💾 保存推广记录</button>
+                    <button class="btn-primary" onclick="submitPromotion()">SAVE PROMO / 保存推广记录</button>
                 </div>
             </div>
 
@@ -680,7 +735,7 @@
                     <span class="badge badge-purple" id="promo-count">共0条</span>
                 </div>
                 <div id="promo-list" class="item-list">
-                    <div class="empty-state">📣 还没有推广记录</div>
+                    <div class="empty-state">No Promotion Records / 暂无推广记录</div>
                 </div>
             </div>
         </section>
@@ -719,7 +774,8 @@
 
             <div class="card form-card">
                 <div class="form-toggle" id="returns-form-toggle" onclick="toggleForm('returns')">
-                    <span>➕ 录入退货（回库存）</span>
+                    <span style="font-weight: 700; letter-spacing: 1px; color:var(--color-primary);">ADD RETURN /
+                        录入退货</span>
                     <span class="toggle-arrow" id="returns-arrow">▼</span>
                 </div>
                 <div class="form-body" id="returns-form" style="display:none">
@@ -743,8 +799,11 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">款名 + 型号</label>
-                            <input type="text" class="form-input" id="r-product" list="product-list"
-                                placeholder="输入搜索已进货的款型" autocomplete="off" onfocus="populateSaleProductDropdown()">
+                            <div class="autocomplete-wrap">
+                                <input type="text" class="form-input" id="r-product" placeholder="输入搜索已进货的款型"
+                                    autocomplete="off">
+                                <div class="autocomplete-list" id="r-product-list"></div>
+                            </div>
                         </div>
                     </div>
                     <div class="form-row">
@@ -766,9 +825,9 @@
                         <input type="text" class="form-input" id="r-reason" placeholder="如：客户不喜欢">
                     </div>
                     <div class="info-box">
-                        ℹ️ 退货后商品自动回库存，损失 = 物流费 + 运费险
+                        * 退货后商品自动回库存，损失 = 物流费 + 运费险
                     </div>
-                    <button class="btn-primary" onclick="submitReturn()">💾 保存退货记录</button>
+                    <button class="btn-primary" onclick="submitReturn()">SAVE RETURN / 保存退货单</button>
                 </div>
             </div>
 
@@ -778,7 +837,7 @@
                     <span class="badge badge-orange" id="returns-count">共0条</span>
                 </div>
                 <div id="returns-list" class="item-list">
-                    <div class="empty-state">↩️ 还没有退货记录</div>
+                    <div class="empty-state">No Return Records / 暂无退货记录</div>
                 </div>
             </div>
         </section>
@@ -835,27 +894,27 @@
                 <div class="profit-big-num" id="rpt-profit">¥0.00</div>
                 <div class="profit-details">
                     <div class="profit-row">
-                        <span>💰 销售收入</span>
+                        <span>Sales Revenue / 销售收入</span>
                         <span class="success" id="rpt-revenue">+¥0.00</span>
                     </div>
                     <div class="profit-row">
-                        <span>📦 已售成本</span>
+                        <span>Cost of Goods / 已售成本</span>
                         <span class="danger" id="rpt-cost">-¥0.00</span>
                     </div>
                     <div class="profit-row" id="rpt-refund-row" style="display:none">
-                        <span>↩️ 退货损失</span>
+                        <span>Return Loss / 退货损失</span>
                         <span class="danger" id="rpt-refund">-¥0.00</span>
                     </div>
                     <div class="profit-row" id="rpt-supplies-row">
-                        <span>🎁 辅料支出</span>
+                        <span>Supply Exp / 辅料支出</span>
                         <span class="danger" id="rpt-supplies">-¥0.00</span>
                     </div>
                     <div class="profit-row" id="rpt-promo-row">
-                        <span>📣 推广支出</span>
+                        <span>Promo Exp / 推广支出</span>
                         <span class="danger" id="rpt-promo">-¥0.00</span>
                     </div>
                     <div class="profit-row">
-                        <span>💳 订货转账</span>
+                        <span>Order Tf / 订货转账</span>
                         <span class="danger" id="rpt-orders">-¥0.00</span>
                     </div>
                 </div>
@@ -877,13 +936,14 @@
 
             <div class="row-2col">
                 <div class="card">
-                    <h3 class="card-title">📊 平台分析</h3>
+                    <h3 class="card-title" style="letter-spacing:1px;font-weight:700">PLATFORM ANALYSIS / 平台分析</h3>
                     <div id="platform-breakdown">
                         <div class="empty-state-sm">暂无数据</div>
                     </div>
                 </div>
                 <div class="card">
-                    <h3 class="card-title">🏭 工厂采购汇总（<span id="rpt-year"></span>年）</h3>
+                    <h3 class="card-title" style="letter-spacing:1px;font-weight:700">FACTORY PURCHASES / 工厂采购汇总（<span
+                            id="rpt-year"></span>）</h3>
                     <div id="factory-summary">
                         <div class="empty-state-sm">暂无数据</div>
                     </div>
@@ -891,7 +951,7 @@
             </div>
 
             <div class="card">
-                <h3 class="card-title">📉 近6个月趋势</h3>
+                <h3 class="card-title" style="letter-spacing:1px;font-weight:700">TRENDS / 近6月趋势</h3>
                 <div class="chart-container">
                     <div class="chart-bars" id="trend-chart"></div>
                     <div class="chart-legend">
@@ -903,33 +963,33 @@
 
             <div class="card profit-card">
                 <div class="profit-header">
-                    <span>📅 <span id="yr-year-label"></span>年 年度汇总</span>
+                    <span><span id="yr-year-label"></span> YEARLY / 年度汇总</span>
                     <span class="badge" id="yr-rate-badge">利润率 0%</span>
                 </div>
                 <div class="profit-big-num" id="yr-profit">¥0.00</div>
                 <div class="profit-details">
                     <div class="profit-row">
-                        <span>💰 年度收入</span>
+                        <span>Yearly / 年度收入</span>
                         <span class="success" id="yr-revenue">+¥0.00</span>
                     </div>
                     <div class="profit-row">
-                        <span>📦 已售成本</span>
+                        <span>Cost / 已售成本</span>
                         <span class="danger" id="yr-cost">-¥0.00</span>
                     </div>
                     <div class="profit-row" id="yr-refund-row" style="display:none">
-                        <span>↩️ 退货损失</span>
+                        <span>Returns / 退货损失</span>
                         <span class="danger" id="yr-refund">-¥0.00</span>
                     </div>
                     <div class="profit-row">
-                        <span>🎁 辅料支出</span>
+                        <span>Supplies / 辅料支出</span>
                         <span class="danger" id="yr-supplies">-¥0.00</span>
                     </div>
                     <div class="profit-row">
-                        <span>📣 推广支出</span>
+                        <span>Promo / 推广支出</span>
                         <span class="danger" id="yr-promo">-¥0.00</span>
                     </div>
                     <div class="profit-row">
-                        <span>💳 订货转账</span>
+                        <span>Orders / 订货转账</span>
                         <span class="danger" id="yr-orders">-¥0.00</span>
                     </div>
                 </div>
@@ -950,28 +1010,29 @@
             </div>
 
             <div class="card">
-                <h3 class="card-title">💾 数据管理</h3>
+                <h3 class="card-title" style="letter-spacing:1px;font-weight:700">DATA MANAGEMENT / 数据管理</h3>
                 <div class="data-mgmt-grid">
                     <div class="data-mgmt-item">
-                        <div class="data-mgmt-icon">🔒</div>
-                        <div class="data-mgmt-title">备份数据</div>
+                        <div class="data-mgmt-title" style="font-size:16px"><span
+                                style="font-weight:800; opacity:0.3; margin-right:8px;">[BK]</span>备份数据</div>
                         <div class="data-mgmt-desc">下载完整备份文件（JSON），可用于恢复全部数据</div>
-                        <button class="btn-primary" style="margin-top:12px" onclick="backupData()">📥 下载备份</button>
+                        <button class="btn-primary" style="margin-top:12px" onclick="backupData()">DOWNLOAD /
+                            下载备份</button>
                     </div>
                     <div class="data-mgmt-item">
-                        <div class="data-mgmt-icon">📂</div>
-                        <div class="data-mgmt-title">恢复数据</div>
+                        <div class="data-mgmt-title" style="font-size:16px"><span
+                                style="font-weight:800; opacity:0.3; margin-right:8px;">[RS]</span>恢复数据</div>
                         <div class="data-mgmt-desc">从备份文件恢复数据（会覆盖当前数据）</div>
                         <button class="btn-secondary" style="margin-top:12px"
-                            onclick="document.getElementById('restore-file').click()">📤 选择备份文件</button>
+                            onclick="document.getElementById('restore-file').click()">RESTORE / 选择备份</button>
                         <input type="file" id="restore-file" accept=".json" style="display:none"
                             onchange="restoreData(this)">
                     </div>
                     <div class="data-mgmt-item">
-                        <div class="data-mgmt-icon">📊</div>
-                        <div class="data-mgmt-title">导出 Excel</div>
+                        <div class="data-mgmt-title" style="font-size:16px"><span
+                                style="font-weight:800; opacity:0.3; margin-right:8px;">[EX]</span>导出 Excel</div>
                         <div class="data-mgmt-desc">导出为 CSV 表格，可用 Excel / WPS 打开查看</div>
-                        <button class="btn-secondary" style="margin-top:12px" onclick="exportData()">📤 导出
+                        <button class="btn-secondary" style="margin-top:12px" onclick="exportData()">EXPORT / 导出
                             CSV</button>
                     </div>
                 </div>
@@ -982,7 +1043,7 @@
         <section class="view" id="view-salary">
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">💰 可分配余额</h3>
+                    <h3 class="card-title">AVAILABLE / 可分配余额</h3>
                 </div>
                 <div class="stock-summary">
                     <div class="stock-stat">
@@ -1004,7 +1065,8 @@
 
             <div class="card">
                 <div class="form-header" onclick="toggleForm('salary')">
-                    <span>💸 发工资</span>
+                    <span style="font-weight: 700; letter-spacing: 1px; color:var(--color-primary);">PAY SALARY /
+                        发工资</span>
                     <span class="toggle-arrow" id="salary-arrow">▼</span>
                 </div>
                 <div class="form-body" id="salary-form" style="display:none">
@@ -1031,11 +1093,11 @@
                     </div>
                     <div class="profit-preview" id="sal-preview" style="display:none">
                         <div class="preview-row">
-                            <span>👤 合伙人A</span>
+                            <span>Partner / 合伙人A</span>
                             <span class="success" id="sal-person-a">¥0</span>
                         </div>
                         <div class="preview-row">
-                            <span>👤 合伙人B</span>
+                            <span>Partner / 合伙人B</span>
                             <span class="success" id="sal-person-b">¥0</span>
                         </div>
                     </div>
@@ -1043,7 +1105,7 @@
                         <label class="form-label">备注（选填）</label>
                         <input type="text" class="form-input" id="sal-note" placeholder="如：3-4月工资">
                     </div>
-                    <button class="btn-primary" onclick="submitSalary()">💸 确认发放</button>
+                    <button class="btn-primary" onclick="submitSalary()">CONFIRM / 确认发放</button>
                 </div>
             </div>
 
@@ -1053,7 +1115,7 @@
                     <span class="badge badge-blue" id="salary-count">共0条</span>
                 </div>
                 <div id="salary-list">
-                    <div class="empty-state">💸 还没有发放记录</div>
+                    <div class="empty-state">No Payment Records / 暂无发放记录</div>
                 </div>
             </div>
         </section>
@@ -1063,11 +1125,12 @@
             <!-- 壳体成本表 -->
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">📱 壳体成本表</h3>
+                    <h3 class="card-title" style="letter-spacing:1px;font-weight:700">SHELL COSTS / 壳体成本表</h3>
                     <span class="badge badge-blue" id="shell-cost-count">共0条</span>
                 </div>
                 <div class="form-header" onclick="toggleForm('shellcost')">
-                    <span>➕ 新增壳体成本</span>
+                    <span style="font-weight: 700; letter-spacing: 1px; color:var(--color-primary);">ADD SHELL COST /
+                        新增壳体成本</span>
                     <span class="toggle-arrow" id="shellcost-arrow">▼</span>
                 </div>
                 <div class="form-body" id="shellcost-form" style="display:none">
@@ -1106,7 +1169,7 @@
                         <label class="form-label">备注（选填）</label>
                         <input type="text" class="form-input" id="sc-note" placeholder="如：含UV印刷">
                     </div>
-                    <button class="btn-primary" onclick="submitShellCost()">💾 保存</button>
+                    <button class="btn-primary" onclick="submitShellCost()">SAVE / 保存</button>
                 </div>
                 <div class="table-wrap">
                     <table class="ref-table" id="shell-cost-table">
@@ -1134,11 +1197,12 @@
             <!-- 磁吸支架成本表 -->
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">🧲 磁吸支架成本表</h3>
+                    <h3 class="card-title" style="letter-spacing:1px;font-weight:700">BRACKET COSTS / 磁吸支架成本</h3>
                     <span class="badge badge-blue" id="bracket-cost-count">共0条</span>
                 </div>
                 <div class="form-header" onclick="toggleForm('bracketcost')">
-                    <span>➕ 新增支架成本</span>
+                    <span style="font-weight: 700; letter-spacing: 1px; color:var(--color-primary);">ADD BRACKET COST /
+                        新增支架成本</span>
                     <span class="toggle-arrow" id="bracketcost-arrow">▼</span>
                 </div>
                 <div class="form-body" id="bracketcost-form" style="display:none">
@@ -1171,7 +1235,7 @@
                         <label class="form-label">备注（选填）</label>
                         <input type="text" class="form-input" id="bc-note" placeholder="如：含安装">
                     </div>
-                    <button class="btn-primary" onclick="submitBracketCost()">💾 保存</button>
+                    <button class="btn-primary" onclick="submitBracketCost()">SAVE / 保存</button>
                 </div>
                 <div class="table-wrap">
                     <table class="ref-table" id="bracket-cost-table">
