@@ -78,6 +78,16 @@ function getReturnLossAmount(r) {
     if (r.lossAmount !== undefined) return Number(r.lossAmount) || 0;
     return ((Number(r.logistics) || 0) + (Number(r.insurance) || 0)) * (Number(r.quantity) || 1);
 }
+function getOrderNonReusableLoss(order, fallbackLogistics = 4, fallbackInsurance = 1.5) {
+    const logistics = Number(order?.logistics);
+    const insurance = Number(order?.insurance);
+    const fallback = (Number(fallbackLogistics) || 4) + (Number(fallbackInsurance) || 1.5);
+    const total = (isNaN(logistics) ? 0 : logistics) + (isNaN(insurance) ? 0 : insurance);
+    return total > 0 ? total : fallback;
+}
+function hasReturnLossBooked(orderId) {
+    return getReturns().some(r => r.orderId === orderId && getReturnLossAmount(r) > 0);
+}
 function getReturnProfitAdjustment(r) {
     if (r.profitAdjustment !== undefined) return Number(r.profitAdjustment) || 0;
     return Number(r.refundAmount) || 0;
@@ -465,10 +475,10 @@ function generateCSV() {
     csv += '\n【销售记录】\n订单ID,日期,平台,地区,款名,型号,数量,售价,进货价,物流,包装,运费险,总收入,总成本,利润,备注\n';
     getSales().forEach(s => { csv += `${saleOrderId(s)},${s.date},${s.platform},${s.province || ''},${s.design},${s.model},${s.quantity},${s.sellingPrice},${s.purchaseCost},${s.logistics},${s.packaging},${s.insurance},${s.totalRevenue},${s.totalCost},${s.profit},${s.note}\n`; });
 
-    csv += '\n【退货记录】\n订单ID,日期,平台,地区,退回商品,数量,退货损耗,利润冲减,原因\n';
+    csv += '\n【退货记录】\n订单ID,日期,平台,地区,退回商品,数量,扣回利润,原因\n';
     getReturns().forEach(r => {
         const products = getReturnItems(r).map(item => `${item.design ? item.design + ' ' : ''}${item.model}×${item.quantity}`).join(' / ');
-        csv += `${r.orderId || ''},${r.date},${r.platform},${r.province || ''},${products},${r.quantity},${getReturnLossAmount(r)},${getReturnProfitAdjustment(r)},${r.reason}\n`;
+        csv += `${r.orderId || ''},${r.date},${r.platform},${r.province || ''},${products},${r.quantity},${getReturnProfitAdjustment(r)},${r.reason}\n`;
     });
 
     csv += '\n【订货转账】\n日期,工厂,商品,转账金额,备注\n';
@@ -694,10 +704,6 @@ function bindFormListeners() {
     const sL = document.getElementById('s-logistics'), sP = document.getElementById('s-packaging'), sI = document.getElementById('s-insurance');
     [sL, sP, sI].forEach(el => el.addEventListener('input', () => { updateCostPreview(); updateSaleProfitPreview(); }));
     document.querySelectorAll('input[name="s-commission"]').forEach(r => r.addEventListener('change', updateSaleProfitPreview));
-    ['r-logistics', 'r-insurance'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.addEventListener('input', updateReturnLossPreview);
-    });
 }
 
 
@@ -762,7 +768,7 @@ function renderDashboard() {
     const pl = getPurchases().slice(0, 5).map(p => ({ icon: 'IN', title: `${p.factory} · ${p.design} ${p.model} ×${p.quantity}`, date: p.date, amount: '-¥' + fmt(p.totalCost), cls: 'danger', time: p.createdAt }));
     const rl = getReturns().slice(0, 3).map(r => {
         const first = getReturnItems(r)[0] || {};
-        return { icon: 'RET', title: `退货 · ${first.design ? first.design + ' ' : ''}${first.model || r.model || ''} ×${r.quantity}`, date: r.date, amount: '-¥' + fmt(getReturnLossAmount(r)), cls: 'warning', time: r.createdAt };
+        return { icon: 'RET', title: `退货 · ${first.design ? first.design + ' ' : ''}${first.model || r.model || ''} ×${r.quantity}`, date: r.date, amount: '-¥' + fmt(getReturnProfitAdjustment(r)), cls: 'warning', time: r.createdAt };
     });
     const items = [...sl, ...pl, ...rl].sort((a, b) => b.time - a.time).slice(0, 8);
 
@@ -1570,12 +1576,12 @@ function renderReturns() {
     const yPrefix = String(returnsYear);
     const yr = allReturns.filter(r => r.date && r.date.startsWith(yPrefix));
     document.getElementById('returns-month-count').textContent = mr.reduce((s, r) => s + r.quantity, 0) + '件';
-    document.getElementById('returns-month-amount').textContent = '¥' + fmt(mr.reduce((s, r) => s + getReturnLossAmount(r), 0));
+    document.getElementById('returns-month-amount').textContent = '¥' + fmt(mr.reduce((s, r) => s + getReturnProfitAdjustment(r), 0));
     document.getElementById('returns-month-label').textContent = returnsMonth + '月退货';
-    document.getElementById('returns-amount-label').textContent = returnsMonth + '月损失';
+    document.getElementById('returns-amount-label').textContent = returnsMonth + '月扣回利润';
     document.getElementById('returns-year-label').textContent = returnsYear + '年';
-    document.getElementById('returns-year-title').textContent = returnsYear + '年损失';
-    document.getElementById('returns-year-amount').textContent = '¥' + fmt(yr.reduce((s, r) => s + getReturnLossAmount(r), 0));
+    document.getElementById('returns-year-title').textContent = returnsYear + '年扣回利润';
+    document.getElementById('returns-year-amount').textContent = '¥' + fmt(yr.reduce((s, r) => s + getReturnProfitAdjustment(r), 0));
     document.getElementById('returns-count').textContent = '共' + allReturns.length + '条';
 
     renderReturnOrderPool();
@@ -1585,9 +1591,9 @@ function renderReturns() {
     if (!allReturns.length) { el.innerHTML = '<div class="empty-state">No Return Records / 暂无退货记录</div>'; return; }
     allReturns.sort((a, b) => b.date.localeCompare(a.date));
     const pCls = (p) => p === '淘宝' ? 'badge-orange' : p === '抖音' ? 'badge-douyin' : 'badge-xhs';
-    el.innerHTML = `<div class="table-wrap"> <table class="ref-table"><thead><tr><th>日期</th><th>平台</th><th>地区</th><th>退回商品</th><th>数量</th><th>退货损耗</th><th>利润冲减</th><th></th></tr></thead><tbody>` + allReturns.map(r => {
+    el.innerHTML = `<div class="table-wrap"> <table class="ref-table"><thead><tr><th>日期</th><th>平台</th><th>地区</th><th>退回商品</th><th>数量</th><th>扣回利润</th><th></th></tr></thead><tbody>` + allReturns.map(r => {
         const products = getReturnItems(r).map(item => `${item.design ? item.design + ' ' : ''}${item.model}×${item.quantity}`).join('<br>') || `${r.design || '-'} ${r.model || ''}`;
-        return `<tr><td>${r.date}</td><td><span class="badge ${pCls(r.platform)}">${r.platform}</span></td><td>${r.province || '-'}</td><td>${products}</td><td>${r.quantity}件</td><td class="danger">¥${fmt(getReturnLossAmount(r))}</td><td class="danger">¥${fmt(getReturnProfitAdjustment(r))}</td><td class="td-delete" onclick="confirmDeleteReturn('${r.id}')">✕</td></tr>`;
+        return `<tr><td>${r.date}</td><td><span class="badge ${pCls(r.platform)}">${r.platform}</span></td><td>${r.province || '-'}</td><td>${products}</td><td>${r.quantity}件</td><td class="danger">¥${fmt(getReturnProfitAdjustment(r))}</td><td class="td-delete" onclick="confirmDeleteReturn('${r.id}')">✕</td></tr>`;
     }).join('') + `</tbody></table></div>`;
 }
 
@@ -1597,17 +1603,17 @@ function renderRegionReturnStats() {
     const map = {};
     getSalesOrders().forEach(order => {
         const province = order.province || '未填地区';
-        if (!map[province]) map[province] = { province, saleOrders: 0, returnOrders: new Set(), soldQty: 0, returnQty: 0, loss: 0 };
+        if (!map[province]) map[province] = { province, saleOrders: 0, returnOrders: new Set(), soldQty: 0, returnQty: 0, returnedProfit: 0 };
         map[province].saleOrders++;
         map[province].soldQty += order.quantity;
     });
     getReturns().forEach(r => {
         const province = r.province || '未填地区';
-        if (!map[province]) map[province] = { province, saleOrders: 0, returnOrders: new Set(), soldQty: 0, returnQty: 0, loss: 0 };
+        if (!map[province]) map[province] = { province, saleOrders: 0, returnOrders: new Set(), soldQty: 0, returnQty: 0, returnedProfit: 0 };
         if (r.orderId) map[province].returnOrders.add(r.orderId);
         else map[province].returnOrders.add(r.id);
         map[province].returnQty += Number(r.quantity) || 0;
-        map[province].loss += getReturnLossAmount(r);
+        map[province].returnedProfit += getReturnProfitAdjustment(r);
     });
     const rows = Object.values(map)
         .filter(row => row.saleOrders > 0 || row.returnQty > 0)
@@ -1619,7 +1625,7 @@ function renderRegionReturnStats() {
         }))
         .sort((a, b) => b.orderRate - a.orderRate || b.returnOrderCount - a.returnOrderCount);
     if (!rows.length) { el.innerHTML = '<div class="empty-state-sm">暂无地区退货数据</div>'; return; }
-    el.innerHTML = `<div class="table-wrap"><table class="ref-table"><thead><tr><th>地区</th><th>销售订单</th><th>退货订单</th><th>订单退货率</th><th>售出件数</th><th>退回件数</th><th>商品退货率</th><th>退货损耗</th></tr></thead><tbody>` + rows.map(row => `<tr><td>${row.province}</td><td>${row.saleOrders}</td><td>${row.returnOrderCount}</td><td class="${row.orderRate >= 20 ? 'danger' : 'success'}">${fmt(row.orderRate)}%</td><td>${row.soldQty}</td><td>${row.returnQty}</td><td>${fmt(row.qtyRate)}%</td><td class="danger">¥${fmt(row.loss)}</td></tr>`).join('') + `</tbody></table></div>`;
+    el.innerHTML = `<div class="table-wrap"><table class="ref-table"><thead><tr><th>地区</th><th>销售订单</th><th>退货订单</th><th>订单退货率</th><th>售出件数</th><th>退回件数</th><th>商品退货率</th><th>扣回利润</th></tr></thead><tbody>` + rows.map(row => `<tr><td>${row.province}</td><td>${row.saleOrders}</td><td>${row.returnOrderCount}</td><td class="${row.orderRate >= 20 ? 'danger' : 'success'}">${fmt(row.orderRate)}%</td><td>${row.soldQty}</td><td>${row.returnQty}</td><td>${fmt(row.qtyRate)}%</td><td class="danger">¥${fmt(row.returnedProfit)}</td></tr>`).join('') + `</tbody></table></div>`;
 }
 
 function changeReturnsYear(delta) {
@@ -1673,7 +1679,6 @@ function renderReturnOrderDetail() {
     const order = getSalesOrders().find(o => o.orderId === orderId);
     if (!order) {
         box.innerHTML = '<div class="empty-state-sm">选择一笔销售订单后，这里会显示可退商品</div>';
-        updateReturnLossPreview();
         return;
     }
     const returned = getReturnedQtyBySaleLine(order.orderId);
@@ -1685,7 +1690,7 @@ function renderReturnOrderDetail() {
                 <span class="return-item-name">${item.design ? item.design + ' ' : ''}${item.model}</span>
                 <span class="return-item-meta">已售${item.quantity}件 · 可退${remaining}件 · 售价¥${fmt(item.sellingPrice)}</span>
             </div>
-            <input type="number" class="form-input return-qty-input" value="0" min="0" max="${remaining}" oninput="updateReturnLossPreview()">
+            <input type="number" class="form-input return-qty-input" value="0" min="0" max="${remaining}">
         </div>`;
     }).join('');
     box.innerHTML = `<div class="return-order-meta">
@@ -1693,23 +1698,12 @@ function renderReturnOrderDetail() {
         <span>订单收入：¥${fmt(order.totalRevenue)}</span>
         <span>订单利润：¥${fmt(order.profit)}</span>
     </div>${rows}`;
-    updateReturnLossPreview();
-}
-
-function updateReturnLossPreview() {
-    const el = document.getElementById('r-loss-preview');
-    if (!el) return;
-    const lo = Number(document.getElementById('r-logistics')?.value) || 4;
-    const ins = Number(document.getElementById('r-insurance')?.value) || 1.5;
-    el.textContent = `本次退货损耗：物流${fmt(lo)} + 运费险${fmt(ins)} = ¥${fmt(lo + ins)}（同一笔订单只算一次）`;
 }
 
 function submitReturn() {
     const orderId = document.getElementById('r-order').value;
     const order = getSalesOrders().find(o => o.orderId === orderId);
     if (!order) { showToast('请先选择一笔已销售订单', true); return; }
-    const logistics = document.getElementById('r-logistics').value;
-    const insurance = document.getElementById('r-insurance').value;
     const items = [];
     document.querySelectorAll('#r-order-detail .return-item-row').forEach(row => {
         const quantity = Number(row.querySelector('.return-qty-input').value) || 0;
@@ -1738,7 +1732,9 @@ function submitReturn() {
     const availablePackagingCredit = Math.max(0, (Number(order.packaging) || 0) - usedPackagingCredit);
     const packagingCredit = Math.min(availablePackagingCredit, Math.max(0, returnedRevenue - returnedProductCost));
     const profitAdjustment = Math.max(0, returnedRevenue - returnedProductCost - packagingCredit);
-    const lossAmount = (Number(logistics) || 4) + (Number(insurance) || 1.5);
+    const logistics = Number(order.logistics) || 0;
+    const insurance = Number(order.insurance) || 0;
+    const lossAmount = hasReturnLossBooked(order.orderId) ? 0 : getOrderNonReusableLoss(order);
 
     addReturn({
         orderId: order.orderId,
@@ -1759,8 +1755,6 @@ function submitReturn() {
     });
     showToast('退货已记录，库存已回补 ✓');
     document.getElementById('r-reason').value = '';
-    document.getElementById('r-logistics').value = '4';
-    document.getElementById('r-insurance').value = '1.5';
     document.getElementById('r-order').value = '';
     renderReturnOrderDetail();
     toggleForm('returns');

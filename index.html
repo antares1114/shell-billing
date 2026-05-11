@@ -797,14 +797,14 @@
                 <div class="summary-item">
                     <div class="mini-month-nav">
                         <button class="mini-arrow" onclick="changeReturnsMonth(-1)">◀</button>
-                    <span class="summary-label" id="returns-amount-label">3月损失</span>
+                    <span class="summary-label" id="returns-amount-label">3月扣回利润</span>
                         <button class="mini-arrow" onclick="changeReturnsMonth(1)">▶</button>
                     </div>
                     <span class="summary-value danger" id="returns-month-amount">¥0.00</span>
                 </div>
                 <div class="summary-divider"></div>
                 <div class="summary-item">
-                    <span class="summary-label" id="returns-year-title">2026年损失</span>
+                    <span class="summary-label" id="returns-year-title">2026年扣回利润</span>
                     <span class="summary-value" id="returns-year-amount">¥0.00</span>
                 </div>
             </div>
@@ -858,22 +858,9 @@
                     <div class="return-order-box" id="r-order-detail">
                         <div class="empty-state-sm">选择一笔销售订单后，这里会显示可退商品</div>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group half">
-                            <label class="form-label">物流费（元）</label>
-                            <input type="number" class="form-input" id="r-logistics" value="4" step="0.1">
-                        </div>
-                        <div class="form-group half">
-                            <label class="form-label">运费险（元）</label>
-                            <input type="number" class="form-input" id="r-insurance" value="1.5" step="0.1">
-                        </div>
-                    </div>
                     <div class="form-group">
                         <label class="form-label">退货原因（选填）</label>
                         <input type="text" class="form-input" id="r-reason" placeholder="如：客户不喜欢">
-                    </div>
-                    <div class="info-box">
-                        <span id="r-loss-preview">本次退货损耗：物流4.00 + 运费险1.50 = ¥5.50（同一笔订单只算一次）</span>
                     </div>
                     <button class="btn-primary" onclick="submitReturn()">SAVE RETURN / 保存退货单</button>
                 </div>
@@ -960,7 +947,7 @@
                         <span class="danger" id="rpt-cost">-¥0.00</span>
                     </div>
                     <div class="profit-row" id="rpt-refund-row" style="display:none">
-                        <span>Return Adjustment / 退货冲减</span>
+                        <span>Returned Profit / 退货扣回利润</span>
                         <span class="danger" id="rpt-refund">-¥0.00</span>
                     </div>
                     <div class="profit-row" id="rpt-supplies-row">
@@ -1035,7 +1022,7 @@
                         <span class="danger" id="yr-cost">-¥0.00</span>
                     </div>
                     <div class="profit-row" id="yr-refund-row" style="display:none">
-                        <span>Returns / 退货冲减</span>
+                        <span>Returns / 退货扣回利润</span>
                         <span class="danger" id="yr-refund">-¥0.00</span>
                     </div>
                     <div class="profit-row">
