@@ -868,6 +868,57 @@ body {
     color: var(--color-primary);
 }
 
+.return-order-box {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: rgba(15, 23, 42, 0.02);
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+.return-order-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 12px;
+    color: var(--color-text-muted);
+}
+
+.return-item-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 92px;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.08);
+}
+
+.return-item-row:last-child {
+    border-bottom: none;
+}
+
+.return-item-main {
+    min-width: 0;
+}
+
+.return-item-name {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--color-text);
+    overflow-wrap: anywhere;
+}
+
+.return-item-meta {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--color-text-muted);
+}
+
 /* 标签选择 */
 .chips {
     display: flex;

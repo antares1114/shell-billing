@@ -578,6 +578,43 @@
                                     onclick="selectPlatform('抖音')">抖音</button>
                             </div>
                         </div>
+                        <div class="form-group">
+                            <label class="form-label">买家地区</label>
+                            <select class="form-input" id="s-province">
+                                <option value="">请选择省份</option>
+                                <option>北京</option>
+                                <option>天津</option>
+                                <option>河北</option>
+                                <option>山西</option>
+                                <option>内蒙古</option>
+                                <option>辽宁</option>
+                                <option>吉林</option>
+                                <option>黑龙江</option>
+                                <option>上海</option>
+                                <option>江苏</option>
+                                <option>浙江</option>
+                                <option>安徽</option>
+                                <option>福建</option>
+                                <option>江西</option>
+                                <option>山东</option>
+                                <option>河南</option>
+                                <option>湖北</option>
+                                <option>湖南</option>
+                                <option>广东</option>
+                                <option>广西</option>
+                                <option>海南</option>
+                                <option>重庆</option>
+                                <option>四川</option>
+                                <option>贵州</option>
+                                <option>云南</option>
+                                <option>西藏</option>
+                                <option>陕西</option>
+                                <option>甘肃</option>
+                                <option>青海</option>
+                                <option>宁夏</option>
+                                <option>新疆</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="batch-model-section">
@@ -760,14 +797,14 @@
                 <div class="summary-item">
                     <div class="mini-month-nav">
                         <button class="mini-arrow" onclick="changeReturnsMonth(-1)">◀</button>
-                        <span class="summary-label" id="returns-amount-label">3月退款</span>
+                    <span class="summary-label" id="returns-amount-label">3月损失</span>
                         <button class="mini-arrow" onclick="changeReturnsMonth(1)">▶</button>
                     </div>
                     <span class="summary-value danger" id="returns-month-amount">¥0.00</span>
                 </div>
                 <div class="summary-divider"></div>
                 <div class="summary-item">
-                    <span class="summary-label" id="returns-year-title">2026年退款</span>
+                    <span class="summary-label" id="returns-year-title">2026年损失</span>
                     <span class="summary-value" id="returns-year-amount">¥0.00</span>
                 </div>
             </div>
@@ -798,24 +835,35 @@
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label class="form-label">款名 + 型号</label>
-                            <div class="autocomplete-wrap">
-                                <input type="text" class="form-input" id="r-product" placeholder="输入搜索已进货的款型"
-                                    autocomplete="off">
-                                <div class="autocomplete-list" id="r-product-list"></div>
-                            </div>
+                            <label class="form-label">查找范围</label>
+                            <select class="form-input" id="r-range" onchange="renderReturnOrderPool(false)">
+                                <option value="7">最近一周</option>
+                                <option value="30" selected>最近一个月</option>
+                                <option value="90">最近三个月</option>
+                                <option value="all">全部订单</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">搜索订单</label>
+                            <input type="text" class="form-input" id="r-order-search" placeholder="输入地区 / 款名 / 型号"
+                                oninput="renderReturnOrderPool(false)">
                         </div>
                     </div>
+                    <div class="form-group">
+                        <label class="form-label">已销售订单池</label>
+                        <select class="form-input" id="r-order" onchange="renderReturnOrderDetail()">
+                            <option value="">请选择已销售订单</option>
+                        </select>
+                    </div>
+                    <div class="return-order-box" id="r-order-detail">
+                        <div class="empty-state-sm">选择一笔销售订单后，这里会显示可退商品</div>
+                    </div>
                     <div class="form-row">
-                        <div class="form-group third">
-                            <label class="form-label">退货数量</label>
-                            <input type="number" class="form-input" id="r-quantity" value="1" min="1">
-                        </div>
-                        <div class="form-group third">
+                        <div class="form-group half">
                             <label class="form-label">物流费（元）</label>
                             <input type="number" class="form-input" id="r-logistics" value="4" step="0.1">
                         </div>
-                        <div class="form-group third">
+                        <div class="form-group half">
                             <label class="form-label">运费险（元）</label>
                             <input type="number" class="form-input" id="r-insurance" value="1.5" step="0.1">
                         </div>
@@ -825,9 +873,19 @@
                         <input type="text" class="form-input" id="r-reason" placeholder="如：客户不喜欢">
                     </div>
                     <div class="info-box">
-                        * 退货后商品自动回库存，损失 = 物流费 + 运费险
+                        <span id="r-loss-preview">本次退货损耗：物流4.00 + 运费险1.50 = ¥5.50（同一笔订单只算一次）</span>
                     </div>
                     <button class="btn-primary" onclick="submitReturn()">SAVE RETURN / 保存退货单</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">地区退货率</h3>
+                    <span class="badge badge-purple">按订单统计</span>
+                </div>
+                <div id="return-region-table" class="item-list">
+                    <div class="empty-state">No Region Data / 暂无地区退货数据</div>
                 </div>
             </div>
 
@@ -902,7 +960,7 @@
                         <span class="danger" id="rpt-cost">-¥0.00</span>
                     </div>
                     <div class="profit-row" id="rpt-refund-row" style="display:none">
-                        <span>Return Loss / 退货损失</span>
+                        <span>Return Adjustment / 退货冲减</span>
                         <span class="danger" id="rpt-refund">-¥0.00</span>
                     </div>
                     <div class="profit-row" id="rpt-supplies-row">
@@ -977,7 +1035,7 @@
                         <span class="danger" id="yr-cost">-¥0.00</span>
                     </div>
                     <div class="profit-row" id="yr-refund-row" style="display:none">
-                        <span>Returns / 退货损失</span>
+                        <span>Returns / 退货冲减</span>
                         <span class="danger" id="yr-refund">-¥0.00</span>
                     </div>
                     <div class="profit-row">
