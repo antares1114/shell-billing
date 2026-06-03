@@ -2088,10 +2088,29 @@ body {
 }
 
 /* ============ 款名分组(库存) ============ */
+.inv-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+    align-items: flex-end;
+    margin-bottom: 16px;
+}
+
+.inv-control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.inv-control-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--color-text-muted);
+}
+
 .inv-view-toggle {
     display: flex;
     gap: 8px;
-    margin-bottom: 16px;
 }
 
 .inv-toggle-btn {

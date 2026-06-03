@@ -53,6 +53,11 @@ const KEYS = {
 function genId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 6); }
 function getToday() { return new Date().toISOString().split('T')[0]; }
 function fmt(n) { return (n === undefined || n === null || isNaN(n)) ? '0.00' : Number(n).toFixed(2); }
+function numOrDefault(value, fallback) {
+    if (value === undefined || value === null || value === '') return fallback;
+    const n = Number(value);
+    return isNaN(n) ? fallback : n;
+}
 
 const CHINA_PROVINCES = [
     '北京', '天津', '河北', '山西', '内蒙古', '辽宁', '吉林', '黑龙江',
@@ -78,10 +83,13 @@ function getReturnLossAmount(r) {
     if (r.lossAmount !== undefined) return Number(r.lossAmount) || 0;
     return ((Number(r.logistics) || 0) + (Number(r.insurance) || 0)) * (Number(r.quantity) || 1);
 }
-function getOrderNonReusableLoss(order, fallbackLogistics = 4, fallbackInsurance = 1.5) {
+function getOrderNonReusableLoss(order, fallbackLogistics = 3, fallbackInsurance = 0) {
     const logistics = Number(order?.logistics);
     const insurance = Number(order?.insurance);
-    const fallback = (Number(fallbackLogistics) || 4) + (Number(fallbackInsurance) || 1.5);
+    const fallback = numOrDefault(fallbackLogistics, 3) + numOrDefault(fallbackInsurance, 0);
+    if (order && (!isNaN(logistics) || !isNaN(insurance))) {
+        return (isNaN(logistics) ? 0 : logistics) + (isNaN(insurance) ? 0 : insurance);
+    }
     const total = (isNaN(logistics) ? 0 : logistics) + (isNaN(insurance) ? 0 : insurance);
     return total > 0 ? total : fallback;
 }
@@ -315,8 +323,8 @@ function addReturn(item) {
     const list = getReturns();
     const items = Array.isArray(item.items) ? item.items : [];
     const qty = items.length ? items.reduce((s, x) => s + (Number(x.quantity) || 0), 0) : Number(item.quantity);
-    const lo = Number(item.logistics) || 4;
-    const ins = Number(item.insurance) || 1.5;
+    const lo = numOrDefault(item.logistics, 3);
+    const ins = numOrDefault(item.insurance, 0);
     const lossAmount = item.lossAmount !== undefined ? Number(item.lossAmount) : lo + ins;
     const profitAdjustment = item.profitAdjustment !== undefined ? Number(item.profitAdjustment) : lossAmount * qty;
     const record = {
@@ -369,7 +377,7 @@ function getInventorySummary() {
 
     purchases.forEach(p => {
         const k = key(p.design, p.model);
-        if (!map[k]) map[k] = { design: p.design, model: p.model, totalPurchased: 0, totalSold: 0, totalReturned: 0, totalPurchaseCost: 0, purchaseRecords: 0 };
+        if (!map[k]) map[k] = { design: p.design, model: p.model, totalPurchased: 0, totalSold: 0, totalReturned: 0, totalPurchaseCost: 0, totalReturnCost: 0, purchaseRecords: 0, saleEvents: [], returnTimes: [] };
         map[k].totalPurchased += p.quantity;
         map[k].totalPurchaseCost += p.totalCost;
         map[k].purchaseRecords++;
@@ -377,22 +385,61 @@ function getInventorySummary() {
 
     sales.forEach(s => {
         const k = key(s.design || '', s.model);
-        if (!map[k]) map[k] = { design: s.design || '', model: s.model, totalPurchased: 0, totalSold: 0, totalReturned: 0, totalPurchaseCost: 0, purchaseRecords: 0 };
+        if (!map[k]) map[k] = { design: s.design || '', model: s.model, totalPurchased: 0, totalSold: 0, totalReturned: 0, totalPurchaseCost: 0, totalReturnCost: 0, purchaseRecords: 0, saleEvents: [], returnTimes: [] };
         map[k].totalSold += s.quantity;
+        map[k].saleEvents.push({ time: s.createdAt || Date.parse(s.date || '') || 0, quantity: Number(s.quantity) || 0 });
     });
 
     returns.forEach(r => {
         getReturnItems(r).forEach(item => {
-            const k = key(item.design || r.design || '', item.model || r.model);
-            if (map[k]) map[k].totalReturned += Number(item.quantity) || 0;
+            const design = item.design || r.design || '';
+            const model = item.model || r.model;
+            const qty = Number(item.quantity) || 0;
+            const k = key(design, model);
+            if (!map[k]) map[k] = { design, model, totalPurchased: 0, totalSold: 0, totalReturned: 0, totalPurchaseCost: 0, totalReturnCost: 0, purchaseRecords: 0, saleEvents: [], returnTimes: [] };
+            map[k].totalReturned += qty;
+            map[k].totalReturnCost += (Number(item.purchaseCost) || 0) * qty;
+            map[k].returnTimes.push(r.createdAt || Date.parse(r.date || '') || 0);
         });
     });
 
     return Object.values(map).map(m => {
-        const stock = Math.max(0, m.totalPurchased - m.totalSold + m.totalReturned);
-        const avg = m.purchaseRecords > 0 ? m.totalPurchaseCost / m.totalPurchased : 0;
+        const firstReturnTime = m.returnTimes.sort((a, b) => a - b)[0];
+        const soldAfterReturn = firstReturnTime ? m.saleEvents.filter(e => e.time > firstReturnTime).reduce((s, e) => s + e.quantity, 0) : 0;
+        const stock = m.totalPurchased > 0
+            ? Math.max(0, m.totalPurchased - m.totalSold + m.totalReturned)
+            : Math.max(0, m.totalReturned - soldAfterReturn);
+        const avg = m.purchaseRecords > 0 ? m.totalPurchaseCost / m.totalPurchased : (m.totalReturned > 0 ? m.totalReturnCost / m.totalReturned : 0);
         return { ...m, stock, avgCost: Math.round(avg * 100) / 100, stockValue: Math.round(stock * avg * 100) / 100 };
-    }).sort((a, b) => b.stockValue - a.stockValue);
+    }).sort(compareInventoryItems);
+}
+
+function compareInventoryItems(a, b) {
+    if (invSortMode === 'value') {
+        if (b.stockValue !== a.stockValue) return b.stockValue - a.stockValue;
+        if (b.stock !== a.stock) return b.stock - a.stock;
+    } else {
+        if (b.stock !== a.stock) return b.stock - a.stock;
+        if (b.stockValue !== a.stockValue) return b.stockValue - a.stockValue;
+    }
+    const ad = (a.design || '').localeCompare(b.design || '', 'zh-CN');
+    if (ad !== 0) return ad;
+    return (a.model || '').localeCompare(b.model || '', 'zh-CN');
+}
+
+function compareInventoryGroups(a, b) {
+    const sa = a[1].reduce((s, i) => s + i.stock, 0);
+    const sb = b[1].reduce((s, i) => s + i.stock, 0);
+    const va = a[1].reduce((s, i) => s + i.stockValue, 0);
+    const vb = b[1].reduce((s, i) => s + i.stockValue, 0);
+    if (invSortMode === 'value') {
+        if (vb !== va) return vb - va;
+        if (sb !== sa) return sb - sa;
+    } else {
+        if (sb !== sa) return sb - sa;
+        if (vb !== va) return vb - va;
+    }
+    return a[0].localeCompare(b[0], 'zh-CN');
 }
 
 // --- 月度报表 ---
@@ -550,6 +597,7 @@ let returnPlatform = '淘宝';
 let salesFilter = '';
 let reportYear, reportMonth;
 let invViewMode = 'design';
+let invSortMode = 'stock';
 
 // --- 初始化 ---
 window.addEventListener('DOMContentLoaded', async () => {
@@ -671,10 +719,10 @@ function toggleCostDetail() {
 }
 
 function updateCostPreview() {
-    const l = document.getElementById('s-logistics').value || 4;
-    const p = document.getElementById('s-packaging').value || 3;
-    const i = document.getElementById('s-insurance').value || 1.5;
-    document.getElementById('cost-preview').textContent = `物流${l} + 包装${p} + 运费险${i} = ${Number(l) + Number(p) + Number(i)}元/单`;
+    const l = numOrDefault(document.getElementById('s-logistics').value, 3);
+    const p = numOrDefault(document.getElementById('s-packaging').value, 3);
+    const i = numOrDefault(document.getElementById('s-insurance').value, 0);
+    document.getElementById('cost-preview').textContent = `物流${l} + 包装${p} + 运费险${i} = ${l + p + i}元/单`;
 }
 
 function selectPlatform(p) {
@@ -696,6 +744,13 @@ function setInvView(mode) {
     invViewMode = mode;
     document.getElementById('inv-by-design').classList.toggle('active', mode === 'design');
     document.getElementById('inv-by-model').classList.toggle('active', mode === 'model');
+    renderInventory();
+}
+
+function setInvSort(mode) {
+    invSortMode = mode;
+    document.getElementById('inv-sort-stock').classList.toggle('active', mode === 'stock');
+    document.getElementById('inv-sort-value').classList.toggle('active', mode === 'value');
     renderInventory();
 }
 
@@ -1467,9 +1522,11 @@ function updateSaleProfitPreview() {
     let valid = false;
     rows.forEach(row => {
         const q = Number(row.querySelector('.sp-qty')?.value) || 0;
-        const sp = Number(row.querySelector('.sp-price')?.value) || 0;
-        const pc = Number(row.querySelector('.sp-cost')?.value) || 0;
-        if (q > 0 && sp > 0 && pc > 0) {
+        const spRaw = row.querySelector('.sp-price')?.value ?? '';
+        const pcRaw = row.querySelector('.sp-cost')?.value ?? '';
+        const sp = Number(spRaw);
+        const pc = Number(pcRaw);
+        if (q > 0 && spRaw !== '' && pcRaw !== '' && sp >= 0 && pc >= 0) {
             valid = true;
             totalRev += sp * q;
             totalCost += pc * q;
@@ -1477,9 +1534,9 @@ function updateSaleProfitPreview() {
     });
     if (!valid) { document.getElementById('s-profit-preview').style.display = 'none'; return; }
 
-    const lo = Number(document.getElementById('s-logistics').value) || 4;
-    const pk = Number(document.getElementById('s-packaging').value) || 3;
-    const ins = Number(document.getElementById('s-insurance').value) || 1.5;
+    const lo = numOrDefault(document.getElementById('s-logistics').value, 3);
+    const pk = numOrDefault(document.getElementById('s-packaging').value, 3);
+    const ins = numOrDefault(document.getElementById('s-insurance').value, 0);
     const commRate = Number(document.querySelector('input[name="s-commission"]:checked')?.value) || 0;
     const commAmt = totalRev * commRate;
     totalCost += lo + pk + ins + commAmt;
@@ -1500,8 +1557,9 @@ function submitSale() {
         const quantity = row.querySelector('.sp-qty').value;
         const price = row.querySelector('.sp-price').value;
         const cost = row.querySelector('.sp-cost').value;
-        if (!productVal || !quantity || !price || !cost) continue;
-        if (Number(quantity) <= 0 || Number(price) <= 0) continue;
+        if (!productVal || !quantity || price === '' || cost === '') continue;
+        if (Number(quantity) <= 0) continue;
+        if (Number(price) < 0) { showToast('售价不能小于0', true); return; }
         const mapped = _productMap[productVal];
         if (!mapped) { showToast('销售商品必须从库存池中选择', true); return; }
         items.push({
@@ -1526,9 +1584,9 @@ function submitSale() {
     if (!province || !CHINA_PROVINCES.includes(province)) { showToast('请选择买家地区', true); return; }
     const note = document.getElementById('s-note').value;
     const commissionVal = document.querySelector('input[name="s-commission"]:checked')?.value || '0';
-    const lo = document.getElementById('s-logistics').value || 4;
-    const pk = document.getElementById('s-packaging').value || 3;
-    const ins = document.getElementById('s-insurance').value || 1.5;
+    const lo = numOrDefault(document.getElementById('s-logistics').value, 3);
+    const pk = numOrDefault(document.getElementById('s-packaging').value, 3);
+    const ins = numOrDefault(document.getElementById('s-insurance').value, 0);
     const orderId = genId();
 
     items.forEach((item, i) => {
@@ -1863,11 +1921,8 @@ function renderInventory() {
     if (invViewMode === 'design') {
         const groups = {};
         filtered.forEach(item => { const d = item.design || '未分类'; if (!groups[d]) groups[d] = []; groups[d].push(item); });
-        el.innerHTML = Object.entries(groups).sort((a, b) => {
-            const va = a[1].reduce((s, i) => s + i.stockValue, 0);
-            const vb = b[1].reduce((s, i) => s + i.stockValue, 0);
-            return vb - va;
-        }).map(([design, items]) => {
+        el.innerHTML = Object.entries(groups).sort(compareInventoryGroups).map(([design, items]) => {
+            items = items.slice().sort(compareInventoryItems);
             const gs = items.reduce((s, i) => s + i.stock, 0), gv = items.reduce((s, i) => s + i.stockValue, 0);
             const gp = items.reduce((s, i) => s + i.totalPurchased, 0), gsold = items.reduce((s, i) => s + i.totalSold, 0);
             const pct = gp > 0 ? Math.round(gsold / gp * 100) : 0;

@@ -635,13 +635,13 @@
                             <span class="cost-toggle" id="cost-toggle-text">调整 ▼</span>
                         </div>
                         <div class="cost-preview" id="cost-preview">
-                            物流4 + 包装3 + 运费险1.5 = 8.5元/单
+                            物流3 + 包装3 + 运费险0 = 6元/单
                         </div>
                         <div class="cost-detail" id="cost-detail" style="display:none">
                             <div class="form-row">
                                 <div class="form-group third">
                                     <label class="form-label">物流</label>
-                                    <input type="number" class="form-input" id="s-logistics" value="4" step="0.1">
+                                    <input type="number" class="form-input" id="s-logistics" value="3" step="0.1">
                                 </div>
                                 <div class="form-group third">
                                     <label class="form-label">包装</label>
@@ -649,7 +649,7 @@
                                 </div>
                                 <div class="form-group third">
                                     <label class="form-label">运费险</label>
-                                    <input type="number" class="form-input" id="s-insurance" value="1.5" step="0.1">
+                                    <input type="number" class="form-input" id="s-insurance" value="0" step="0.1">
                                 </div>
                             </div>
                             <div class="form-row">
@@ -912,10 +912,24 @@
                     <input type="text" class="search-input" id="inv-search" placeholder="🔍 搜款名或型号"
                         oninput="renderInventory()">
                 </div>
-                <div class="inv-view-toggle">
-                    <button class="inv-toggle-btn active" id="inv-by-design"
-                        onclick="setInvView('design')">按款名分组</button>
-                    <button class="inv-toggle-btn" id="inv-by-model" onclick="setInvView('model')">按型号查看</button>
+                <div class="inv-controls">
+                    <div class="inv-control-group">
+                        <span class="inv-control-label">查看</span>
+                        <div class="inv-view-toggle">
+                            <button class="inv-toggle-btn active" id="inv-by-design"
+                                onclick="setInvView('design')">按款名分组</button>
+                            <button class="inv-toggle-btn" id="inv-by-model" onclick="setInvView('model')">按型号查看</button>
+                        </div>
+                    </div>
+                    <div class="inv-control-group">
+                        <span class="inv-control-label">排序</span>
+                        <div class="inv-view-toggle">
+                            <button class="inv-toggle-btn active" id="inv-sort-stock"
+                                onclick="setInvSort('stock')">库存件数</button>
+                            <button class="inv-toggle-btn" id="inv-sort-value"
+                                onclick="setInvSort('value')">积压成本</button>
+                        </div>
+                    </div>
                 </div>
                 <div id="inventory-list" class="item-list">
                     <div class="empty-state">📋 暂无库存数据</div>
