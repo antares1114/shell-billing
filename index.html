@@ -40,7 +40,7 @@
             <a class="nav-item active" data-view="dashboard" onclick="switchView('dashboard')">
                 <span class="nav-label">首页概览</span>
             </a>
-            <a class="nav-item" data-view="purchase" onclick="switchView('purchase')">
+            <a class="nav-item" data-view="purchase" onclick="switchView('purchase')" style="display:none">
                 <span class="nav-label">进货记录</span>
             </a>
             <a class="nav-item" data-view="orders" onclick="switchView('orders')">
@@ -49,13 +49,13 @@
             <a class="nav-item" data-view="supplies" onclick="switchView('supplies')">
                 <span class="nav-label">辅料采购</span>
             </a>
-            <a class="nav-item" data-view="sales" onclick="switchView('sales')">
+            <a class="nav-item" data-view="sales" onclick="switchView('sales')" style="display:none">
                 <span class="nav-label">销售记录</span>
             </a>
             <a class="nav-item" data-view="promotion" onclick="switchView('promotion')">
                 <span class="nav-label">推广费用</span>
             </a>
-            <a class="nav-item" data-view="returns" onclick="switchView('returns')">
+            <a class="nav-item" data-view="returns" onclick="switchView('returns')" style="display:none">
                 <span class="nav-label">退货记录</span>
             </a>
             <a class="nav-item" data-view="inventory" onclick="switchView('inventory')">
@@ -66,6 +66,9 @@
             </a>
             <a class="nav-item" data-view="costref" onclick="switchView('costref')">
                 <span class="nav-label">成本参考</span>
+            </a>
+            <a class="nav-item" data-view="coupons" onclick="switchView('coupons')">
+                <span class="nav-label">优惠券设置</span>
             </a>
             <a class="nav-item" data-view="report" onclick="switchView('report')">
                 <span class="nav-label">月度报表</span>
@@ -98,35 +101,35 @@
             <div class="kpi-grid">
                 <div class="kpi-card">
                     <div class="kpi-header">
-                        <span class="kpi-title">REVENUE / <span id="kpi-revenue-label">3月销售额</span></span>
+                        <span class="kpi-title">CASH OUT / <span id="kpi-revenue-label">3月现金支出</span></span>
                     </div>
                     <div class="kpi-value" id="kpi-revenue">¥0.00</div>
-                    <div class="kpi-sub" id="kpi-sold-qty">0 件已售</div>
+                    <div class="kpi-sub" id="kpi-sold-qty">转账/辅料/推广/工资</div>
                 </div>
                 <div class="kpi-card kpi-profit-card">
                     <div class="kpi-header">
-                        <span class="kpi-title">PROFIT / <span id="kpi-profit-label">3月利润</span></span>
+                        <span class="kpi-title">STOCK VALUE / <span id="kpi-profit-label">当前积压成本</span></span>
                     </div>
                     <div class="kpi-value" id="kpi-profit">¥0.00</div>
-                    <div class="kpi-sub" id="kpi-profit-rate">利润率 0%</div>
+                    <div class="kpi-sub" id="kpi-profit-rate">库存 0 件</div>
                 </div>
                 <div class="kpi-card kpi-balance-card">
                     <div class="kpi-header">
-                        <span class="kpi-title">BALANCE / <span>可分配余额</span></span>
+                        <span class="kpi-title">TRANSFER / <span>本月订货转账</span></span>
                     </div>
                     <div class="kpi-value success" id="kpi-balance">¥0.00</div>
-                    <div class="kpi-sub" id="kpi-balance-sub">累计利润 - 已发工资</div>
+                    <div class="kpi-sub" id="kpi-balance-sub">工厂转账 0 笔</div>
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-header">
-                        <span class="kpi-title">PURCHASES / <span id="kpi-purchase-label">3月进货额</span></span>
+                        <span class="kpi-title">STOCK IN / <span id="kpi-purchase-label">3月入库额</span></span>
                     </div>
                     <div class="kpi-value" id="kpi-purchase">¥0.00</div>
                     <div class="kpi-sub" id="kpi-purchase-qty">0 笔</div>
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-header">
-                        <span class="kpi-title">SUPPLIES / <span id="kpi-supplies-label">3月辅料支出</span></span>
+                        <span class="kpi-title">OPS EXP / <span id="kpi-supplies-label">3月辅料推广</span></span>
                     </div>
                     <div class="kpi-value" id="kpi-supplies">¥0.00</div>
                     <div class="kpi-sub" id="kpi-supplies-qty">0 笔</div>
@@ -161,14 +164,14 @@
                     </div>
                     <div class="quick-btns">
                         <button class="quick-btn purchase-btn"
-                            onclick="switchView('purchase');setTimeout(()=>toggleForm('purchase'),100)">
-                            <span style="font-weight:700;letter-spacing:1px;font-size:12px;opacity:0.8">PURCHASE</span>
-                            <span style="margin-top:2px;font-weight:600">记录进货</span>
+                            onclick="switchView('inventory');setTimeout(()=>toggleForm('purchase'),100)">
+                            <span style="font-weight:700;letter-spacing:1px;font-size:12px;opacity:0.8">STOCK IN</span>
+                            <span style="margin-top:2px;font-weight:600">新增库存</span>
                         </button>
                         <button class="quick-btn sales-btn"
-                            onclick="switchView('sales');setTimeout(()=>toggleForm('sales'),100)">
-                            <span style="font-weight:700;letter-spacing:1px;font-size:12px;opacity:0.8">SALE</span>
-                            <span style="margin-top:2px;font-weight:600">记录销售</span>
+                            onclick="switchView('inventory')">
+                            <span style="font-weight:700;letter-spacing:1px;font-size:12px;opacity:0.8">CHECK</span>
+                            <span style="margin-top:2px;font-weight:600">库存盘点</span>
                         </button>
                     </div>
                 </div>
@@ -176,7 +179,7 @@
 
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title" style="letter-spacing:1px;font-weight:700">RECENT ACTIVITY / 最近动态</h3>
+                    <h3 class="card-title" style="letter-spacing:1px;font-weight:700">RECENT COSTS / 最近支出与入库</h3>
                 </div>
                 <div id="recent-list" class="recent-list">
                     <div class="empty-state">No Records Found / 暂无记录</div>
@@ -184,132 +187,8 @@
             </div>
         </section>
 
-        <!-- ===== 进货记录 ===== -->
-        <section class="view" id="view-purchase">
-            <div class="card" style="margin-bottom: 24px; padding-bottom: 12px;">
-                <h3 class="card-title" style="letter-spacing:1px;font-weight:700;color:var(--color-text-muted)">FACTORY
-                    OVERVIEW / 工厂概览</h3>
-                <div id="factory-bar"
-                    style="height: 340px; display: flex; align-items: flex-end; gap: 44px; padding: 120px 20px 20px 20px; overflow-x: auto; overflow-y: visible; border-bottom: 1px solid var(--color-border); margin-bottom: 16px;">
-                </div>
-            </div>
-
-            <div class="card form-card">
-                <div class="form-toggle" id="purchase-form-toggle" onclick="toggleForm('purchase')">
-                    <span style="font-weight: 700; letter-spacing: 1px; color:var(--color-primary);">ADD PURCHASE /
-                        新增进货</span>
-                    <span class="toggle-arrow" id="purchase-arrow">▼</span>
-                </div>
-                <div class="form-body" id="purchase-form" style="display:none">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">日期</label>
-                            <input type="date" class="form-input" id="p-date">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">工厂名称</label>
-                            <input type="text" class="form-input" id="p-factory" list="factory-list"
-                                placeholder="点击选择或输入工厂名">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">款名（设计款名称）</label>
-                            <input type="text" class="form-input" id="p-design" placeholder="如：浪漫花纹、星空系列">
-                        </div>
-                        <div class="form-group half">
-                            <label class="form-label">单价（元/件）</label>
-                            <input type="number" class="form-input" id="p-unitcost" placeholder="0" min="0" step="0.1">
-                        </div>
-                    </div>
-
-                    <!-- 批量型号录入区域 -->
-                    <div class="batch-model-section">
-                        <div class="batch-model-header">
-                            <label class="form-label"
-                                style="margin:0; font-weight:700; color:var(--color-primary)">MODEL & QUANTITY /
-                                型号与数量</label>
-                        </div>
-                        <div id="p-model-rows">
-                            <!-- 默认一行，由 JS 初始化 -->
-                        </div>
-                        <button type="button" class="add-model-btn" onclick="addModelRow()">＋ ADD MODEL / 添加型号</button>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">备注（选填）</label>
-                        <input type="text" class="form-input" id="p-note" placeholder="可填写备注信息">
-                    </div>
-                    <button class="btn-primary" onclick="submitPurchase()">SAVE PURCHASE / 保存进货单</button>
-                </div>
-            </div>
-
-            <!-- 补货表单 -->
-            <div class="card form-card">
-                <div class="form-toggle" id="restock-form-toggle" onclick="toggleForm('restock')"
-                    style="background:rgba(16,185,129,0.08)">
-                    <span style="color:var(--color-primary); font-weight: 700; letter-spacing: 1px;">RESTOCK / 补货</span>
-                    <span class="toggle-arrow" id="restock-arrow">▼</span>
-                </div>
-                <div class="form-body" id="restock-form" style="display:none">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">日期</label>
-                            <input type="date" class="form-input" id="rs-date">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">选择款式</label>
-                            <div class="autocomplete-wrap">
-                                <input type="text" class="form-input" id="rs-design" placeholder="输入筛选或点击选择已有款式"
-                                    autocomplete="off">
-                                <div class="autocomplete-list" id="rs-design-list"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">工厂名称 <span
-                                    style="color:var(--color-text-muted);font-size:11px">（自动填充）</span></label>
-                            <input type="text" class="form-input" id="rs-factory" readonly
-                                style="background:rgba(16,185,129,0.06)">
-                        </div>
-                        <div class="form-group half">
-                            <label class="form-label">单价 <span
-                                    style="color:var(--color-text-muted);font-size:11px">（自动填充，可修改）</span></label>
-                            <input type="number" class="form-input" id="rs-unitcost" placeholder="0" min="0" step="0.1">
-                        </div>
-                    </div>
-
-                    <div class="batch-model-section">
-                        <div class="batch-model-header">
-                            <label class="form-label"
-                                style="margin:0; font-weight:700; color:var(--color-primary);">RESTOCK MODEL & QTY /
-                                补货型号</label>
-                        </div>
-                        <div id="rs-model-rows"></div>
-                        <button type="button" class="add-model-btn" onclick="addRestockModelRow()">＋ ADD MODEL /
-                            添加型号</button>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">备注（选填）</label>
-                        <input type="text" class="form-input" id="rs-note" placeholder="如：第二批补货">
-                    </div>
-                    <button class="btn-primary" onclick="submitRestock()" style="background:var(--gradient-green)">SAVE
-                        RESTOCK / 保存补货单</button>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">进货列表</h3>
-                    <span class="badge badge-blue" id="purchase-count">共0条</span>
-                </div>
-                <div id="purchase-list" class="item-list">
-                    <div class="empty-state">No Purchase Records / 暂无进货记录</div>
-                </div>
-            </div>
-        </section>
+        <!-- ===== 旧进货入口已并入库存管理；保留空视图避免旧链接报错 ===== -->
+        <section class="view" id="view-purchase" style="display:none"></section>
 
         <!-- ===== 订货转账 ===== -->
         <section class="view" id="view-orders">
@@ -331,6 +210,21 @@
                 <div class="summary-item">
                     <span class="summary-label" id="order-year-title">2026年总转账</span>
                     <span class="summary-value" id="order-all-total">¥0.00</span>
+                </div>
+            </div>
+
+            <div class="card month-chart-card">
+                <div class="card-header">
+                    <h3 class="card-title">MONTHLY TRANSFER / 月度转账走势</h3>
+                </div>
+                <div class="month-bar-chart" id="order-month-bars"></div>
+            </div>
+
+            <div class="card" style="margin-bottom: 24px; padding-bottom: 12px;">
+                <h3 class="card-title" style="letter-spacing:1px;font-weight:700;color:var(--color-text-muted)">FACTORY
+                    OVERVIEW / 工厂概览</h3>
+                <div id="order-factory-bar"
+                    style="height: 340px; display: flex; align-items: flex-end; gap: 44px; padding: 120px 20px 20px 20px; overflow-x: auto; overflow-y: visible; border-bottom: 1px solid var(--color-border); margin-bottom: 16px;">
                 </div>
             </div>
 
@@ -375,6 +269,7 @@
                     <h3 class="card-title">转账记录列表</h3>
                     <span class="badge badge-blue" id="order-count">共0条</span>
                 </div>
+                <div class="filter-row list-range-row" id="order-range-filters"></div>
                 <div id="order-list" class="item-list">
                     <div class="empty-state">No Transfer Records / 暂无转账记录</div>
                 </div>
@@ -402,6 +297,13 @@
                     <span class="summary-label" id="supplies-year-title">2026年辅料支出</span>
                     <span class="summary-value" id="supplies-all-total">¥0.00</span>
                 </div>
+            </div>
+
+            <div class="card month-chart-card">
+                <div class="card-header">
+                    <h3 class="card-title">MONTHLY SUPPLY / 月度辅料支出</h3>
+                </div>
+                <div class="month-bar-chart" id="supplies-month-bars"></div>
             </div>
 
             <div class="expense-breakdown" id="expense-breakdown">
@@ -512,6 +414,7 @@
                     <h3 class="card-title">辅料采购列表</h3>
                     <span class="badge badge-purple" id="supplies-count">共0条</span>
                 </div>
+                <div class="filter-row list-range-row" id="supplies-range-filters"></div>
                 <div id="supplies-list" class="item-list">
                     <div class="empty-state">No Supply Records / 暂无辅料采购记录</div>
                 </div>
@@ -733,6 +636,13 @@
                 </div>
             </div>
 
+            <div class="card month-chart-card">
+                <div class="card-header">
+                    <h3 class="card-title">MONTHLY PROMOTION / 月度推广支出</h3>
+                </div>
+                <div class="month-bar-chart" id="promo-month-bars"></div>
+            </div>
+
             <div class="card form-card">
                 <div class="form-toggle" id="promo-form-toggle" onclick="toggleForm('promo')">
                     <span style="font-weight: 700; letter-spacing: 1px; color:var(--color-primary);">ADD PROMOTION /
@@ -771,6 +681,7 @@
                     <h3 class="card-title">推广记录列表</h3>
                     <span class="badge badge-purple" id="promo-count">共0条</span>
                 </div>
+                <div class="filter-row list-range-row" id="promo-range-filters"></div>
                 <div id="promo-list" class="item-list">
                     <div class="empty-state">No Promotion Records / 暂无推广记录</div>
                 </div>
@@ -889,7 +800,7 @@
 
         <!-- ===== 库存管理 ===== -->
         <section class="view" id="view-inventory">
-            <div class="summary-bar three-col">
+            <div class="summary-bar three-col inventory-summary-bar">
                 <div class="summary-item">
                     <span class="summary-label">总库存</span>
                     <span class="summary-value" id="inv-total-stock">0件</span>
@@ -904,23 +815,126 @@
                     <span class="summary-label">款式/型号</span>
                     <span class="summary-value" id="inv-model-count">0</span>
                 </div>
+                <div class="summary-divider"></div>
+                <div class="summary-item">
+                    <span class="summary-label">上次盘点</span>
+                    <span class="summary-value" id="inv-last-check">尚未盘点</span>
+                </div>
+            </div>
+
+            <div class="inventory-insights-grid" id="inventory-insights">
+                <div class="empty-state">暂无库存洞察</div>
+            </div>
+
+            <div class="card form-card">
+                <div class="form-toggle" id="purchase-form-toggle" onclick="toggleForm('purchase')">
+                    <span style="font-weight: 700; letter-spacing: 1px; color:var(--color-primary);">ADD STOCK /
+                        新增库存</span>
+                    <span class="toggle-arrow" id="purchase-arrow">▼</span>
+                </div>
+                <div class="form-body" id="purchase-form" style="display:none">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">日期</label>
+                            <input type="date" class="form-input" id="p-date">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">工厂名称</label>
+                            <input type="text" class="form-input" id="p-factory" list="factory-list"
+                                placeholder="点击选择或输入工厂名">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">款名（设计款名称）</label>
+                            <input type="text" class="form-input" id="p-design" placeholder="如：浪漫花纹、星空系列">
+                        </div>
+                        <div class="form-group half">
+                            <label class="form-label">单价（元/件）</label>
+                            <input type="number" class="form-input" id="p-unitcost" placeholder="0" min="0" step="0.1">
+                        </div>
+                    </div>
+
+                    <div class="batch-model-section">
+                        <div class="batch-model-header">
+                            <label class="form-label"
+                                style="margin:0; font-weight:700; color:var(--color-primary)">MODEL & QUANTITY /
+                                型号与数量</label>
+                        </div>
+                        <div id="p-model-rows"></div>
+                        <button type="button" class="add-model-btn" onclick="addModelRow()">＋ ADD MODEL / 添加型号</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">备注（选填）</label>
+                        <input type="text" class="form-input" id="p-note" placeholder="可填写备注信息">
+                    </div>
+                    <button class="btn-primary" onclick="submitPurchase()">SAVE STOCK / 保存入库</button>
+                </div>
+            </div>
+
+            <div class="card form-card">
+                <div class="form-toggle" id="restock-form-toggle" onclick="toggleForm('restock')"
+                    style="background:rgba(16,185,129,0.08)">
+                    <span style="color:var(--color-primary); font-weight: 700; letter-spacing: 1px;">RESTOCK / 补货</span>
+                    <span class="toggle-arrow" id="restock-arrow">▼</span>
+                </div>
+                <div class="form-body" id="restock-form" style="display:none">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">日期</label>
+                            <input type="date" class="form-input" id="rs-date">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">选择款式</label>
+                            <div class="autocomplete-wrap">
+                                <input type="text" class="form-input" id="rs-design" placeholder="输入筛选或点击选择已有款式"
+                                    autocomplete="off">
+                                <div class="autocomplete-list" id="rs-design-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">工厂名称 <span
+                                    style="color:var(--color-text-muted);font-size:11px">（自动填充）</span></label>
+                            <input type="text" class="form-input" id="rs-factory" readonly
+                                style="background:rgba(16,185,129,0.06)">
+                        </div>
+                        <div class="form-group half">
+                            <label class="form-label">单价 <span
+                                    style="color:var(--color-text-muted);font-size:11px">（自动填充，可修改）</span></label>
+                            <input type="number" class="form-input" id="rs-unitcost" placeholder="0" min="0" step="0.1">
+                        </div>
+                    </div>
+
+                    <div class="batch-model-section">
+                        <div class="batch-model-header">
+                            <label class="form-label"
+                                style="margin:0; font-weight:700; color:var(--color-primary);">RESTOCK MODEL & QTY /
+                                补货型号</label>
+                        </div>
+                        <div id="rs-model-rows"></div>
+                        <button type="button" class="add-model-btn" onclick="addRestockModelRow()">＋ ADD MODEL /
+                            添加型号</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">备注（选填）</label>
+                        <input type="text" class="form-input" id="rs-note" placeholder="如：第二批补货">
+                    </div>
+                    <button class="btn-primary" onclick="submitRestock()" style="background:var(--gradient-green)">SAVE
+                        RESTOCK / 保存补货单</button>
+                </div>
             </div>
 
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">库存明细</h3>
+                    <h3 class="card-title">库存盘点</h3>
                     <input type="text" class="search-input" id="inv-search" placeholder="🔍 搜款名或型号"
                         oninput="renderInventory()">
                 </div>
                 <div class="inv-controls">
-                    <div class="inv-control-group">
-                        <span class="inv-control-label">查看</span>
-                        <div class="inv-view-toggle">
-                            <button class="inv-toggle-btn active" id="inv-by-design"
-                                onclick="setInvView('design')">按款名分组</button>
-                            <button class="inv-toggle-btn" id="inv-by-model" onclick="setInvView('model')">按型号查看</button>
-                        </div>
-                    </div>
                     <div class="inv-control-group">
                         <span class="inv-control-label">排序</span>
                         <div class="inv-view-toggle">
@@ -935,6 +949,17 @@
                     <div class="empty-state">📋 暂无库存数据</div>
                 </div>
             </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">入库记录</h3>
+                    <span class="badge badge-blue" id="purchase-count">共0条</span>
+                </div>
+                <div class="filter-row list-range-row" id="purchase-range-filters"></div>
+                <div id="purchase-list" class="item-list">
+                    <div class="empty-state">No Stock Records / 暂无入库记录</div>
+                </div>
+            </div>
         </section>
 
         <!-- ===== 月度报表 ===== -->
@@ -947,61 +972,61 @@
 
             <div class="card profit-card">
                 <div class="profit-header">
-                    <span>月度利润</span>
-                    <span class="badge" id="rpt-rate-badge">利润率 0%</span>
+                    <span>月度现金支出</span>
+                    <span class="badge" id="rpt-rate-badge">0笔支出</span>
                 </div>
                 <div class="profit-big-num" id="rpt-profit">¥0.00</div>
                 <div class="profit-details">
                     <div class="profit-row">
-                        <span>Sales Revenue / 销售收入</span>
-                        <span class="success" id="rpt-revenue">+¥0.00</span>
+                        <span>Stock In / 入库成本</span>
+                        <span class="danger" id="rpt-revenue">¥0.00</span>
                     </div>
                     <div class="profit-row">
-                        <span>Cost of Goods / 已售成本</span>
-                        <span class="danger" id="rpt-cost">-¥0.00</span>
+                        <span>Factory Transfer / 订货转账</span>
+                        <span class="danger" id="rpt-cost">¥0.00</span>
                     </div>
                     <div class="profit-row" id="rpt-refund-row" style="display:none">
-                        <span>Returned Profit / 退货扣回利润</span>
-                        <span class="danger" id="rpt-refund">-¥0.00</span>
+                        <span>Reserved / 预留项</span>
+                        <span class="danger" id="rpt-refund">¥0.00</span>
                     </div>
                     <div class="profit-row" id="rpt-supplies-row">
                         <span>Supply Exp / 辅料支出</span>
-                        <span class="danger" id="rpt-supplies">-¥0.00</span>
+                        <span class="danger" id="rpt-supplies">¥0.00</span>
                     </div>
                     <div class="profit-row" id="rpt-promo-row">
                         <span>Promo Exp / 推广支出</span>
-                        <span class="danger" id="rpt-promo">-¥0.00</span>
+                        <span class="danger" id="rpt-promo">¥0.00</span>
                     </div>
                     <div class="profit-row">
-                        <span>Order Tf / 订货转账</span>
-                        <span class="danger" id="rpt-orders">-¥0.00</span>
+                        <span>Salary / 发工资</span>
+                        <span class="danger" id="rpt-orders">¥0.00</span>
                     </div>
                 </div>
                 <div class="stats-row">
                     <div class="stat-item">
                         <span class="stat-num" id="rpt-sold-qty">0</span>
-                        <span class="stat-desc">件已售</span>
+                        <span class="stat-desc">本月入库件数</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-num" id="rpt-return-qty">0</span>
-                        <span class="stat-desc">件退货</span>
+                        <span class="stat-desc">支出记录数</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-num" id="rpt-purchase-spend">¥0</span>
-                        <span class="stat-desc">本月进货</span>
+                        <span class="stat-desc">当前积压成本</span>
                     </div>
                 </div>
             </div>
 
             <div class="row-2col">
                 <div class="card">
-                    <h3 class="card-title" style="letter-spacing:1px;font-weight:700">PLATFORM ANALYSIS / 平台分析</h3>
+                    <h3 class="card-title" style="letter-spacing:1px;font-weight:700">EXPENSE BREAKDOWN / 支出结构</h3>
                     <div id="platform-breakdown">
                         <div class="empty-state-sm">暂无数据</div>
                     </div>
                 </div>
                 <div class="card">
-                    <h3 class="card-title" style="letter-spacing:1px;font-weight:700">FACTORY PURCHASES / 工厂采购汇总（<span
+                    <h3 class="card-title" style="letter-spacing:1px;font-weight:700">FACTORY STOCK IN / 工厂入库汇总（<span
                             id="rpt-year"></span>）</h3>
                     <div id="factory-summary">
                         <div class="empty-state-sm">暂无数据</div>
@@ -1010,12 +1035,12 @@
             </div>
 
             <div class="card">
-                <h3 class="card-title" style="letter-spacing:1px;font-weight:700">TRENDS / 近6月趋势</h3>
+                <h3 class="card-title" style="letter-spacing:1px;font-weight:700">TRENDS / 近6月支出趋势</h3>
                 <div class="chart-container">
                     <div class="chart-bars" id="trend-chart"></div>
                     <div class="chart-legend">
-                        <span class="legend-item"><span class="legend-dot purple"></span>收入</span>
-                        <span class="legend-item"><span class="legend-dot green"></span>利润</span>
+                        <span class="legend-item"><span class="legend-dot purple"></span>入库</span>
+                        <span class="legend-item"><span class="legend-dot green"></span>现金支出</span>
                     </div>
                 </div>
             </div>
@@ -1023,47 +1048,47 @@
             <div class="card profit-card">
                 <div class="profit-header">
                     <span><span id="yr-year-label"></span> YEARLY / 年度汇总</span>
-                    <span class="badge" id="yr-rate-badge">利润率 0%</span>
+                    <span class="badge" id="yr-rate-badge">0笔支出</span>
                 </div>
                 <div class="profit-big-num" id="yr-profit">¥0.00</div>
                 <div class="profit-details">
                     <div class="profit-row">
-                        <span>Yearly / 年度收入</span>
-                        <span class="success" id="yr-revenue">+¥0.00</span>
+                        <span>Stock In / 年度入库成本</span>
+                        <span class="danger" id="yr-revenue">¥0.00</span>
                     </div>
                     <div class="profit-row">
-                        <span>Cost / 已售成本</span>
-                        <span class="danger" id="yr-cost">-¥0.00</span>
+                        <span>Factory Transfer / 年度订货转账</span>
+                        <span class="danger" id="yr-cost">¥0.00</span>
                     </div>
                     <div class="profit-row" id="yr-refund-row" style="display:none">
-                        <span>Returns / 退货扣回利润</span>
-                        <span class="danger" id="yr-refund">-¥0.00</span>
+                        <span>Reserved / 预留项</span>
+                        <span class="danger" id="yr-refund">¥0.00</span>
                     </div>
                     <div class="profit-row">
                         <span>Supplies / 辅料支出</span>
-                        <span class="danger" id="yr-supplies">-¥0.00</span>
+                        <span class="danger" id="yr-supplies">¥0.00</span>
                     </div>
                     <div class="profit-row">
                         <span>Promo / 推广支出</span>
-                        <span class="danger" id="yr-promo">-¥0.00</span>
+                        <span class="danger" id="yr-promo">¥0.00</span>
                     </div>
                     <div class="profit-row">
-                        <span>Orders / 订货转账</span>
-                        <span class="danger" id="yr-orders">-¥0.00</span>
+                        <span>Salary / 发工资</span>
+                        <span class="danger" id="yr-orders">¥0.00</span>
                     </div>
                 </div>
                 <div class="stats-row">
                     <div class="stat-item">
                         <span class="stat-num" id="yr-sold-qty">0</span>
-                        <span class="stat-desc">件已售</span>
+                        <span class="stat-desc">年度入库件数</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-num" id="yr-return-qty">0</span>
-                        <span class="stat-desc">件退货</span>
+                        <span class="stat-desc">支出记录数</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-num" id="yr-purchase-spend">¥0</span>
-                        <span class="stat-desc">年度进货</span>
+                        <span class="stat-desc">当前积压成本</span>
                     </div>
                 </div>
             </div>
@@ -1093,6 +1118,13 @@
                         <div class="data-mgmt-desc">导出为 CSV 表格，可用 Excel / WPS 打开查看</div>
                         <button class="btn-secondary" style="margin-top:12px" onclick="exportData()">EXPORT / 导出
                             CSV</button>
+                    </div>
+                    <div class="data-mgmt-item">
+                        <div class="data-mgmt-title" style="font-size:16px"><span
+                                style="font-weight:800; opacity:0.3; margin-right:8px;">[IV]</span>库存基准</div>
+                        <div class="data-mgmt-desc" id="migration-status">尚未生成库存基准</div>
+                        <button class="btn-secondary" style="margin-top:12px"
+                            onclick="confirmCreateInventoryBaseline()">CREATE / 生成基准</button>
                     </div>
                 </div>
             </div>
@@ -1185,6 +1217,8 @@
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title" style="letter-spacing:1px;font-weight:700">SHELL COSTS / 壳体成本表</h3>
+                    <input type="text" class="search-input" id="costref-search" placeholder="🔍 搜索名称"
+                        oninput="setCostRefSearch(this.value)">
                     <span class="badge badge-blue" id="shell-cost-count">共0条</span>
                 </div>
                 <div class="form-header" onclick="toggleForm('shellcost')">
@@ -1225,7 +1259,7 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">备注（选填）</label>
+                        <label class="form-label">名称（选填）</label>
                         <input type="text" class="form-input" id="sc-note" placeholder="如：含UV印刷">
                     </div>
                     <button class="btn-primary" onclick="submitShellCost()">SAVE / 保存</button>
@@ -1240,7 +1274,7 @@
                                 <th>非磁吸</th>
                                 <th>特殊工艺</th>
                                 <th>加价</th>
-                                <th>备注</th>
+                                <th>名称</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -1291,7 +1325,7 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">备注（选填）</label>
+                        <label class="form-label">名称（选填）</label>
                         <input type="text" class="form-input" id="bc-note" placeholder="如：含安装">
                     </div>
                     <button class="btn-primary" onclick="submitBracketCost()">SAVE / 保存</button>
@@ -1305,7 +1339,7 @@
                                 <th>单价</th>
                                 <th>特殊工艺</th>
                                 <th>加价</th>
-                                <th>备注</th>
+                                <th>名称</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -1315,6 +1349,120 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== 优惠券设置 ===== -->
+        <section class="view" id="view-coupons">
+            <div class="summary-bar three-col coupon-summary-bar">
+                <div class="summary-item">
+                    <span class="summary-label">测算记录</span>
+                    <span class="summary-value" id="coupon-total-count">0个</span>
+                </div>
+                <div class="summary-divider"></div>
+                <div class="summary-item">
+                    <span class="summary-label">需注意</span>
+                    <span class="summary-value danger" id="coupon-warning-count">0个</span>
+                </div>
+                <div class="summary-divider"></div>
+                <div class="summary-item">
+                    <span class="summary-label">最低粗算毛利</span>
+                    <span class="summary-value" id="coupon-min-group">¥0.00</span>
+                </div>
+            </div>
+
+            <div class="card form-card">
+                <div class="form-toggle" id="coupon-form-toggle" onclick="toggleForm('coupon')">
+                    <span style="font-weight: 700; letter-spacing: 1px; color:var(--color-primary);">PRICE CALCULATOR /
+                        优惠券价格计算器</span>
+                    <span class="toggle-arrow" id="coupon-arrow">▼</span>
+                </div>
+                <div class="form-body" id="coupon-form" style="display:none">
+                    <div class="form-row coupon-cost-row">
+                        <div class="form-group coupon-name-group">
+                            <label class="form-label">商品 / 方案名称</label>
+                            <input type="text" class="form-input coupon-input" id="cp-name" placeholder="如：菲林二合一磁吸">
+                        </div>
+                        <div class="form-group coupon-cost-group">
+                            <label class="form-label">成本</label>
+                            <input type="number" class="form-input coupon-input" id="cp-cost" min="0" step="0.01">
+                        </div>
+                        <div class="form-group coupon-cost-group">
+                            <label class="form-label">物流</label>
+                            <input type="number" class="form-input coupon-input" id="cp-logistics" value="3" min="0"
+                                step="0.01">
+                        </div>
+                        <div class="form-group coupon-cost-group">
+                            <label class="form-label">包装</label>
+                            <input type="number" class="form-input coupon-input" id="cp-packaging" value="3" min="0"
+                                step="0.01">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group third">
+                            <label class="form-label">原价</label>
+                            <input type="number" class="form-input coupon-input" id="cp-original" min="0" step="0.01">
+                        </div>
+                        <div class="form-group third">
+                            <label class="form-label">日常价（原价减券后）</label>
+                            <input type="number" class="form-input coupon-input" id="cp-daily" min="0" step="0.01">
+                        </div>
+                        <div class="form-group third">
+                            <label class="form-label">直播 / 博主价</label>
+                            <input type="number" class="form-input coupon-input" id="cp-live" min="0" step="0.01">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group third">
+                            <label class="form-label">群内购</label>
+                            <input type="number" class="form-input coupon-input" id="cp-group" min="0" step="0.01">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">博主佣金（按直播 / 博主价计算）</label>
+                            <div class="coupon-rate-row">
+                                <button type="button" class="filter-chip coupon-commission-chip active"
+                                    onclick="setCouponCommission(15)">15%</button>
+                                <button type="button" class="filter-chip coupon-commission-chip"
+                                    onclick="setCouponCommission(20)">20%</button>
+                                <button type="button" class="filter-chip coupon-commission-chip"
+                                    onclick="setCouponCommission(25)">25%</button>
+                                <input type="number" class="form-input coupon-input coupon-rate-input" id="cp-commission"
+                                    value="15" min="0" step="0.1">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">平台活动折扣（按原价计算）</label>
+                            <div class="coupon-rate-row">
+                                <button type="button" class="filter-chip coupon-discount-chip active"
+                                    onclick="setCouponDiscount(88)">88折</button>
+                                <button type="button" class="filter-chip coupon-discount-chip"
+                                    onclick="setCouponDiscount(85)">85折</button>
+                                <button type="button" class="filter-chip coupon-discount-chip"
+                                    onclick="setCouponDiscount(82)">82折</button>
+                                <input type="number" class="form-input coupon-input coupon-rate-input"
+                                    id="cp-platform-discount" value="88" min="0" step="0.1">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">备注（选填）</label>
+                            <input type="text" class="form-input" id="cp-note" placeholder="如：新品第一波、群内VIP价">
+                        </div>
+                    </div>
+                    <div class="coupon-preview-grid" id="coupon-preview"></div>
+                    <button class="btn-primary" onclick="submitCouponSetting()">SAVE CALC / 保存测算</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">测算记录列表</h3>
+                    <span class="badge badge-blue" id="coupon-list-count">共0条</span>
+                </div>
+                <div id="coupon-list" class="item-list">
+                    <div class="empty-state">No Calculations / 暂无测算记录</div>
                 </div>
             </div>
         </section>
